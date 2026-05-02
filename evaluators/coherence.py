@@ -28,6 +28,9 @@ class CoherenceEvaluator(BaseEvaluator):
     Uses Claude as an LLM judge via the Anthropic Messages API.
     """
 
+    NAME = "coherence"
+    PROMPT_VERSION = "v1"
+
     def __init__(self, judge_model: str = "claude-haiku-4-5-20251001") -> None:
         """
         Args:

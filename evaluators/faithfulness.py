@@ -29,6 +29,9 @@ class FaithfulnessEvaluator(BaseEvaluator):
     retrieved documents. Uses Claude as an LLM judge.
     """
 
+    NAME = "faithfulness"
+    PROMPT_VERSION = "v1"
+
     def __init__(self, judge_model: str = "claude-haiku-4-5-20251001") -> None:
         """
         Args:

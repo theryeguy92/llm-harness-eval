@@ -76,6 +76,13 @@ class ResultRow(BaseModel):
     scores: dict[str, EvalResult]
 
 
+class EvaluatorInfo(BaseModel):
+    """Snapshot of an evaluator's identity recorded at run time."""
+
+    name: str
+    prompt_version: str
+
+
 class MetricSummary(BaseModel):
     """Aggregate statistics for one metric across all prompts for one model."""
 
@@ -101,6 +108,7 @@ class EvalReport(BaseModel):
     config: EvalConfig
     results: list[ResultRow]
     summary: dict[str, ModelSummary] = Field(default_factory=dict)
+    evaluator_versions: dict[str, EvaluatorInfo] = Field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -188,12 +196,17 @@ async def _run_eval(config: EvalConfig) -> EvalReport:
     results = await asyncio.gather(*tasks)
 
     result_list = list(results)
+    evaluator_versions = {
+        name: EvaluatorInfo(name=ev.NAME, prompt_version=ev.PROMPT_VERSION)
+        for name, ev in evaluators.items()
+    }
     return EvalReport(
         name=config.name,
         timestamp=datetime.now(timezone.utc).isoformat(),
         config=config,
         results=result_list,
         summary=compute_summary(result_list, config.evaluators),
+        evaluator_versions=evaluator_versions,
     )
 
 
