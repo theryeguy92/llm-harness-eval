@@ -12,6 +12,7 @@ class RunResult(BaseModel):
     input_tokens: int = Field(..., description="Number of tokens in the input prompt")
     output_tokens: int = Field(..., description="Number of tokens in the generated response")
     response: str = Field(..., description="The model-generated text response")
+    cost_usd: float = Field(0.0, description="Estimated cost in USD based on published token pricing; 0.0 if model is not in the price table")
 
 
 class BaseRunner(ABC):
