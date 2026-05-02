@@ -1,4 +1,5 @@
 """Runner for OpenAI-compatible chat models via the Chat Completions API."""
+import asyncio
 import os
 import time
 
@@ -52,19 +53,26 @@ class OpenAIRunner(BaseRunner):
 
         start = time.perf_counter()
         async with httpx.AsyncClient(timeout=120.0) as client:
-            r = await client.post(
-                self._url,
-                headers={
-                    "Authorization": f"Bearer {self._api_key}",
-                    "content-type": "application/json",
-                },
-                json={
-                    "model": self._model,
-                    "max_tokens": self._max_tokens,
-                    "messages": messages,
-                },
-            )
-            r.raise_for_status()
+            for attempt in range(5):
+                r = await client.post(
+                    self._url,
+                    headers={
+                        "Authorization": f"Bearer {self._api_key}",
+                        "content-type": "application/json",
+                    },
+                    json={
+                        "model": self._model,
+                        "max_tokens": self._max_tokens,
+                        "messages": messages,
+                    },
+                )
+                if r.status_code == 429:
+                    await asyncio.sleep(2 ** attempt)
+                    continue
+                r.raise_for_status()
+                break
+            else:
+                r.raise_for_status()
         latency_ms = (time.perf_counter() - start) * 1000
 
         data = r.json()

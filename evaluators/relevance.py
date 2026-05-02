@@ -1,10 +1,9 @@
 """Relevance evaluator: does the response directly address the prompt?"""
-import json
 import os
 
 import httpx
 
-from .base import BaseEvaluator, EvalResult
+from .base import BaseEvaluator, EvalResult, parse_judge_response
 
 
 _SYSTEM = """\
@@ -71,6 +70,4 @@ class RelevanceEvaluator(BaseEvaluator):
             )
             r.raise_for_status()
 
-        raw = r.json()["content"][0]["text"].strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-        parsed = json.loads(raw)
-        return EvalResult(score=float(parsed["score"]), explanation=parsed["explanation"])
+        return parse_judge_response(r.json()["content"][0]["text"])

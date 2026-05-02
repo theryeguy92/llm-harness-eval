@@ -1,4 +1,5 @@
 """Runner for Anthropic Claude models via the Messages API."""
+import asyncio
 import os
 import time
 
@@ -50,16 +51,23 @@ class ClaudeRunner(BaseRunner):
 
         start = time.perf_counter()
         async with httpx.AsyncClient(timeout=60.0) as client:
-            r = await client.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key": self._api_key,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json",
-                },
-                json=body,
-            )
-            r.raise_for_status()
+            for attempt in range(5):
+                r = await client.post(
+                    "https://api.anthropic.com/v1/messages",
+                    headers={
+                        "x-api-key": self._api_key,
+                        "anthropic-version": "2023-06-01",
+                        "content-type": "application/json",
+                    },
+                    json=body,
+                )
+                if r.status_code in (429, 529):
+                    await asyncio.sleep(2 ** attempt)
+                    continue
+                r.raise_for_status()
+                break
+            else:
+                r.raise_for_status()
         latency_ms = (time.perf_counter() - start) * 1000
 
         data = r.json()
