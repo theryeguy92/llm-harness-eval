@@ -6,6 +6,7 @@ import time
 import httpx
 
 from .base import BaseRunner, RunResult
+from .pricing import get_cost_usd
 
 _DEFAULT_BASE_URL = "https://api.openai.com/v1"
 
@@ -77,10 +78,13 @@ class OpenAIRunner(BaseRunner):
 
         data = r.json()
         usage = data["usage"]
+        input_tokens = usage["prompt_tokens"]
+        output_tokens = usage["completion_tokens"]
         return RunResult(
             model=data["model"],
             latency_ms=round(latency_ms, 1),
-            input_tokens=usage["prompt_tokens"],
-            output_tokens=usage["completion_tokens"],
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
             response=data["choices"][0]["message"]["content"],
+            cost_usd=get_cost_usd(data["model"], input_tokens, output_tokens),
         )

@@ -6,6 +6,7 @@ import time
 import httpx
 
 from .base import BaseRunner, RunResult
+from .pricing import get_cost_usd
 
 
 class ClaudeRunner(BaseRunner):
@@ -71,10 +72,13 @@ class ClaudeRunner(BaseRunner):
         latency_ms = (time.perf_counter() - start) * 1000
 
         data = r.json()
+        input_tokens = data["usage"]["input_tokens"]
+        output_tokens = data["usage"]["output_tokens"]
         return RunResult(
             model=data["model"],
             latency_ms=round(latency_ms, 1),
-            input_tokens=data["usage"]["input_tokens"],
-            output_tokens=data["usage"]["output_tokens"],
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
             response=data["content"][0]["text"],
+            cost_usd=get_cost_usd(data["model"], input_tokens, output_tokens),
         )

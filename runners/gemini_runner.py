@@ -6,6 +6,7 @@ import time
 import httpx
 
 from .base import BaseRunner, RunResult
+from .pricing import get_cost_usd
 
 _BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 
@@ -74,10 +75,13 @@ class GeminiRunner(BaseRunner):
 
         data = r.json()
         usage = data["usageMetadata"]
+        input_tokens = usage["promptTokenCount"]
+        output_tokens = usage["candidatesTokenCount"]
         return RunResult(
             model=self._model,
             latency_ms=round(latency_ms, 1),
-            input_tokens=usage["promptTokenCount"],
-            output_tokens=usage["candidatesTokenCount"],
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
             response=data["candidates"][0]["content"]["parts"][0]["text"],
+            cost_usd=get_cost_usd(self._model, input_tokens, output_tokens),
         )

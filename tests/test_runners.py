@@ -35,6 +35,8 @@ async def test_claude_run_returns_result(anthropic_env, respx_mock):
     assert result.input_tokens == 10
     assert result.output_tokens == 20
     assert result.latency_ms > 0
+    # 10 input @ $0.80/M + 20 output @ $4.00/M = $0.000088
+    assert result.cost_usd == pytest.approx(0.000088)
 
 
 async def test_claude_sends_correct_headers(anthropic_env, respx_mock):
@@ -134,6 +136,8 @@ async def test_openai_run_returns_result(openai_env, respx_mock):
     assert result.model == "gpt-4o"
     assert result.input_tokens == 10
     assert result.output_tokens == 15
+    # 10 input @ $2.50/M + 15 output @ $10.00/M = $0.000175
+    assert result.cost_usd == pytest.approx(0.000175)
 
 
 async def test_openai_sends_bearer_auth(openai_env, respx_mock):
@@ -215,6 +219,8 @@ async def test_gemini_run_returns_result(google_env, respx_mock):
     assert result.model == "gemini-flash-latest"
     assert result.input_tokens == 10
     assert result.output_tokens == 15
+    # 10 input @ $0.075/M + 15 output @ $0.30/M = $0.00000525
+    assert result.cost_usd == pytest.approx(0.00000525)
 
 
 async def test_gemini_sends_api_key_header(google_env, respx_mock):

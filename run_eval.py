@@ -72,6 +72,7 @@ class ResultRow(BaseModel):
     latency_ms: float
     input_tokens: int
     output_tokens: int
+    cost_usd: float
     scores: dict[str, EvalResult]
 
 
@@ -150,6 +151,7 @@ async def _evaluate_one(
         latency_ms=run.latency_ms,
         input_tokens=run.input_tokens,
         output_tokens=run.output_tokens,
+        cost_usd=run.cost_usd,
         scores=scores,
     )
 
@@ -188,7 +190,7 @@ def _write_json(report: EvalReport, path: Path) -> None:
 def _write_markdown(report: EvalReport, path: Path) -> None:
     """Write a markdown table summarizing scores across all prompt × runner pairs."""
     eval_names = report.config.evaluators
-    headers = ["Prompt", "Runner", "Model", "Latency (ms)", "Tokens"] + [e.title() for e in eval_names]
+    headers = ["Prompt", "Runner", "Model", "Latency (ms)", "Tokens", "Cost ($)"] + [e.title() for e in eval_names]
     header_row = "| " + " | ".join(headers) + " |"
     sep_row = "| " + " | ".join("---" for _ in headers) + " |"
 
@@ -200,14 +202,32 @@ def _write_markdown(report: EvalReport, path: Path) -> None:
         prompt_short = row.prompt[:50].replace("|", "\\|")
         if len(row.prompt) > 50:
             prompt_short += "…"
+        cost_cell = f"${row.cost_usd:.6f}" if row.cost_usd else "—"
         cells = [
             prompt_short,
             row.runner_type,
             row.model,
             f"{row.latency_ms:.0f}",
             str(row.input_tokens + row.output_tokens),
+            cost_cell,
         ] + score_cells
         lines.append("| " + " | ".join(cells) + " |")
+
+    # Summary rows grouped by model
+    by_model: dict[tuple[str, str], list[ResultRow]] = {}
+    for row in report.results:
+        key = (row.runner_type, row.model)
+        by_model.setdefault(key, []).append(row)
+
+    n_cols = len(headers)
+    blank = "—"
+    lines.append("| " + " | ".join("---" for _ in headers) + " |")
+    for (runner_type, model), rows in by_model.items():
+        total = sum(r.cost_usd for r in rows)
+        avg = total / len(rows)
+        empty = [blank] * (n_cols - 4)
+        lines.append("| " + " | ".join([f"**Total**", runner_type, model, blank, blank, f"**${total:.6f}**"] + empty) + " |")
+        lines.append("| " + " | ".join([f"**Avg/prompt**", runner_type, model, blank, blank, f"**${avg:.6f}**"] + empty) + " |")
 
     path.write_text("\n".join(lines) + "\n")
 
@@ -221,11 +241,13 @@ def _print_summary(report: EvalReport) -> None:
     table.add_column("Model")
     table.add_column("Latency", justify="right")
     table.add_column("Tokens", justify="right")
+    table.add_column("Cost ($)", justify="right")
     for e in eval_names:
         table.add_column(e.title(), justify="right")
 
     for row in report.results:
         prompt_label = row.prompt[:32] + ("…" if len(row.prompt) > 32 else "")
+        cost_cell = f"${row.cost_usd:.6f}" if row.cost_usd else "—"
         score_cells = [f"{row.scores[e].score:.2f}" if e in row.scores else "—" for e in eval_names]
         table.add_row(
             prompt_label,
@@ -233,8 +255,30 @@ def _print_summary(report: EvalReport) -> None:
             row.model,
             f"{row.latency_ms:.0f} ms",
             str(row.input_tokens + row.output_tokens),
+            cost_cell,
             *score_cells,
         )
+
+    # Summary rows
+    by_model: dict[tuple[str, str], list[ResultRow]] = {}
+    for row in report.results:
+        key = (row.runner_type, row.model)
+        by_model.setdefault(key, []).append(row)
+
+    for (runner_type, model), rows in by_model.items():
+        total = sum(r.cost_usd for r in rows)
+        avg = total / len(rows)
+        blank = "—"
+        n_score_blanks = len(eval_names)
+        table.add_row(
+            "[bold]Total[/bold]", runner_type, model, blank, blank,
+            f"[bold]${total:.6f}[/bold]", *([blank] * n_score_blanks),
+        )
+        table.add_row(
+            "[bold]Avg/prompt[/bold]", runner_type, model, blank, blank,
+            f"[bold]${avg:.6f}[/bold]", *([blank] * n_score_blanks),
+        )
+
     console.print(table)
 
 
