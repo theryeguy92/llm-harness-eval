@@ -45,7 +45,13 @@ class BaseEvaluator(ABC):
     Subclasses implement a single quality dimension (coherence, faithfulness, etc.)
     and return a normalized score in [0, 1] alongside a human-readable explanation.
     All scoring is async to support concurrent evaluation pipelines.
+
+    Subclasses must set NAME and PROMPT_VERSION so historical reports stay
+    comparable when judge prompts change.
     """
+
+    NAME: str = ""
+    PROMPT_VERSION: str = ""
 
     @abstractmethod
     async def score(
