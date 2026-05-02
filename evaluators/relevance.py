@@ -47,6 +47,13 @@ class RelevanceEvaluator(BaseEvaluator):
     ) -> EvalResult:
         """Score how relevant the response is to the original prompt.
 
+        Rubric:
+            1.0 — Fully addresses the prompt with no off-topic content.
+            0.7 — Mostly on-topic; minor tangents or partial answers.
+            0.5 — Partially relevant; key aspects of the prompt are missed.
+            0.3 — Mostly off-topic or only superficially related.
+            0.0 — Completely irrelevant to the prompt.
+
         Args:
             prompt: The original user prompt.
             response: The model response to evaluate.

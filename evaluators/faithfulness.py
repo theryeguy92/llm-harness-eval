@@ -48,11 +48,18 @@ class FaithfulnessEvaluator(BaseEvaluator):
     ) -> EvalResult:
         """Score faithfulness of a response relative to the provided context.
 
+        Rubric:
+            1.0 — Every claim is directly supported by the context.
+            0.7 — Most claims are supported; minor unsupported extrapolation.
+            0.5 — Roughly half the claims are grounded; notable hallucinations present.
+            0.3 — Few claims are grounded; significant hallucination.
+            0.0 — Response contradicts or entirely ignores the context.
+
         Args:
             prompt: The original user prompt.
             response: The model response to evaluate.
             context: Reference text the response should be grounded in.
-                     Returns a neutral score with a note if omitted.
+                     Returns a neutral 0.5 score with a note if omitted.
 
         Returns:
             EvalResult with faithfulness score and explanation.

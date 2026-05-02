@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
 import typer
 import yaml
 from dotenv import load_dotenv
@@ -76,6 +77,31 @@ class ResultRow(BaseModel):
     scores: dict[str, EvalResult]
 
 
+class ScoreStats(BaseModel):
+    """Aggregated statistics for one metric across N repeated runs."""
+
+    mean: float
+    std: float
+    ci_lower: float
+    ci_upper: float
+    n: int
+
+
+class AggregatedRow(BaseModel):
+    """(prompt × runner) result aggregated across N repeated runs."""
+
+    prompt_id: str
+    prompt: str
+    context: str | None
+    runner_type: str
+    model: str
+    n_runs: int
+    avg_latency_ms: float
+    avg_cost_usd: float
+    total_cost_usd: float
+    scores: dict[str, ScoreStats]
+
+
 class EvaluatorInfo(BaseModel):
     """Snapshot of an evaluator's identity recorded at run time."""
 
@@ -109,6 +135,9 @@ class EvalReport(BaseModel):
     results: list[ResultRow]
     summary: dict[str, ModelSummary] = Field(default_factory=dict)
     evaluator_versions: dict[str, EvaluatorInfo] = Field(default_factory=dict)
+    repeat: int = Field(1, description="Number of times each prompt was run")
+    aggregated_results: list[AggregatedRow] = Field(default_factory=list)
+    statistical_note: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -182,8 +211,8 @@ async def _evaluate_one(
     )
 
 
-async def _run_eval(config: EvalConfig) -> EvalReport:
-    """Execute the full prompt × runner evaluation matrix and return a report."""
+async def _run_eval(config: EvalConfig, repeat: int = 1) -> EvalReport:
+    """Execute the full prompt × runner × repeat evaluation matrix and return a report."""
     evaluators = _build_evaluators(config.evaluators)
     runners = [(cfg, _build_runner(cfg)) for cfg in config.runners]
 
@@ -191,8 +220,10 @@ async def _run_eval(config: EvalConfig) -> EvalReport:
         _evaluate_one(prompt_cfg, runner_cfg, runner, evaluators)
         for prompt_cfg in config.prompts
         for runner_cfg, runner in runners
+        for _ in range(repeat)
     ]
-    console.print(f"[bold]Running {len(tasks)} evaluation(s)…[/bold]")
+    n_combos = len(config.prompts) * len(runners)
+    console.print(f"[bold]Running {len(tasks)} evaluation(s) ({repeat} × {n_combos} prompt/runner combinations)…[/bold]")
     results = await asyncio.gather(*tasks)
 
     result_list = list(results)
@@ -200,6 +231,11 @@ async def _run_eval(config: EvalConfig) -> EvalReport:
         name: EvaluatorInfo(name=ev.NAME, prompt_version=ev.PROMPT_VERSION)
         for name, ev in evaluators.items()
     }
+    note = (
+        "Single run per prompt (--repeat 1). Results are illustrative; "
+        "sample size is too small for statistical significance."
+        if repeat == 1 else None
+    )
     return EvalReport(
         name=config.name,
         timestamp=datetime.now(timezone.utc).isoformat(),
@@ -207,6 +243,9 @@ async def _run_eval(config: EvalConfig) -> EvalReport:
         results=result_list,
         summary=compute_summary(result_list, config.evaluators),
         evaluator_versions=evaluator_versions,
+        repeat=repeat,
+        aggregated_results=aggregate_repeated_runs(result_list, config.evaluators),
+        statistical_note=note,
     )
 
 
@@ -279,6 +318,89 @@ def compute_summary(
     return summary
 
 
+def _bootstrap_ci(
+    scores: list[float],
+    n_bootstrap: int = 1000,
+    rng: np.random.Generator | None = None,
+) -> tuple[float, float]:
+    """Return a 95% bootstrap confidence interval for the mean of scores.
+
+    With N=1 the CI degenerates to (score, score) — callers should surface a
+    note rather than presenting this as a meaningful interval.
+    """
+    arr = np.array(scores, dtype=float)
+    if len(arr) == 1:
+        return float(arr[0]), float(arr[0])
+    if rng is None:
+        rng = np.random.default_rng()
+    indices = rng.integers(0, len(arr), size=(n_bootstrap, len(arr)))
+    boot_means = arr[indices].mean(axis=1)
+    return float(np.percentile(boot_means, 2.5)), float(np.percentile(boot_means, 97.5))
+
+
+def aggregate_repeated_runs(
+    results: list[ResultRow],
+    eval_names: list[str],
+    n_bootstrap: int = 1000,
+    rng: np.random.Generator | None = None,
+) -> list[AggregatedRow]:
+    """Group repeated runs of the same (prompt × runner) pair and compute stats.
+
+    Args:
+        results: Flat list of all ResultRows, including all repeated runs.
+        eval_names: Ordered list of evaluator metric names.
+        n_bootstrap: Number of bootstrap samples for the 95% CI.
+        rng: Optional seeded numpy Generator for reproducible CIs in tests.
+
+    Returns:
+        One AggregatedRow per unique (prompt_id, model) pair, in insertion order.
+    """
+    if not results:
+        return []
+
+    groups: dict[tuple[str, str], list[ResultRow]] = {}
+    for row in results:
+        groups.setdefault((row.prompt_id, row.model), []).append(row)
+
+    aggregated: list[AggregatedRow] = []
+    for (prompt_id, model), rows in groups.items():
+        n = len(rows)
+        avg_latency = sum(r.latency_ms for r in rows) / n
+        total_cost = sum(r.cost_usd for r in rows)
+
+        scores: dict[str, ScoreStats] = {}
+        for metric in eval_names:
+            metric_scores = [r.scores[metric].score for r in rows if metric in r.scores]
+            if not metric_scores:
+                continue
+            arr = np.array(metric_scores, dtype=float)
+            mean = float(arr.mean())
+            std = float(arr.std(ddof=1)) if len(arr) > 1 else 0.0
+            ci_lower, ci_upper = _bootstrap_ci(metric_scores, n_bootstrap=n_bootstrap, rng=rng)
+            scores[metric] = ScoreStats(
+                mean=round(mean, 4),
+                std=round(std, 4),
+                ci_lower=round(ci_lower, 4),
+                ci_upper=round(ci_upper, 4),
+                n=len(metric_scores),
+            )
+
+        aggregated.append(AggregatedRow(
+            prompt_id=prompt_id,
+            prompt=rows[0].prompt,
+            context=rows[0].context,
+            runner_type=rows[0].runner_type,
+            model=model,
+            n_runs=n,
+            avg_latency_ms=round(avg_latency, 1),
+            avg_cost_usd=round(total_cost / n, 8),
+            total_cost_usd=round(total_cost, 8),
+            scores=scores,
+        ))
+
+    return aggregated
+
+
 # ---------------------------------------------------------------------------
 # Report writers
 # ---------------------------------------------------------------------------
@@ -289,13 +411,23 @@ def _write_json(report: EvalReport, path: Path) -> None:
     path.write_text(report.model_dump_json(indent=2))
 
 
+def _fmt_score_stats(s: ScoreStats) -> str:
+    """Format a ScoreStats cell for markdown. Suppresses CI display when n=1."""
+    if s.n == 1:
+        return f"{s.mean:.2f} ± —"
+    return f"{s.mean:.2f} ± {s.std:.2f} [{s.ci_lower:.2f}–{s.ci_upper:.2f}]"
+
+
 def _write_markdown(report: EvalReport, path: Path) -> None:
-    """Write a markdown report with a summary table followed by per-row results."""
+    """Write a markdown report: optional stat note, summary table, aggregated results."""
     eval_names = report.config.evaluators
     blank = "—"
     lines = [f"# {report.name}", f"_Generated: {report.timestamp}_", ""]
 
-    # Summary table (at the top)
+    if report.statistical_note:
+        lines += [f"> **Note:** {report.statistical_note}", ""]
+
+    # Model-level summary table
     if report.summary:
         lines += ["## Summary", ""]
         sum_headers = (
@@ -319,85 +451,89 @@ def _write_markdown(report: EvalReport, path: Path) -> None:
             )
         lines.append("")
 
-    # Per-row results table
-    lines += ["## Results", ""]
-    headers = ["Prompt", "Runner", "Model", "Latency (ms)", "Tokens", "Cost ($)"] + [e.title() for e in eval_names]
-    lines.append("| " + " | ".join(headers) + " |")
-    lines.append("| " + " | ".join("---" for _ in headers) + " |")
-    for row in report.results:
-        score_cells = [f"{row.scores[e].score:.2f}" if e in row.scores else blank for e in eval_names]
-        prompt_short = row.prompt[:50].replace("|", "\\|")
-        if len(row.prompt) > 50:
+    # Aggregated results table (mean ± std [CI] per metric)
+    repeat = report.repeat
+    lines += [f"## Results (n={repeat} run{'s' if repeat != 1 else ''} per prompt)", ""]
+    agg_headers = (
+        ["Prompt", "Runner", "Model", "Runs", "Avg Latency (ms)", "Avg Cost ($)"]
+        + [f"{e.title()} mean ± std [95% CI]" for e in eval_names]
+    )
+    lines.append("| " + " | ".join(agg_headers) + " |")
+    lines.append("| " + " | ".join("---" for _ in agg_headers) + " |")
+    for agg in report.aggregated_results:
+        prompt_short = agg.prompt[:50].replace("|", "\\|")
+        if len(agg.prompt) > 50:
             prompt_short += "…"
-        cost_cell = f"${row.cost_usd:.6f}" if row.cost_usd else blank
+        score_cells = [_fmt_score_stats(agg.scores[e]) if e in agg.scores else blank for e in eval_names]
         cells = [
-            prompt_short, row.runner_type, row.model,
-            f"{row.latency_ms:.0f}", str(row.input_tokens + row.output_tokens), cost_cell,
+            prompt_short, agg.runner_type, agg.model,
+            str(agg.n_runs), f"{agg.avg_latency_ms:.0f}", f"${agg.avg_cost_usd:.6f}",
         ] + score_cells
         lines.append("| " + " | ".join(cells) + " |")
 
-    # Cost totals grouped by model
-    by_model: dict[tuple[str, str], list[ResultRow]] = {}
-    for row in report.results:
-        by_model.setdefault((row.runner_type, row.model), []).append(row)
+    # Cost totals per model
+    by_model: dict[tuple[str, str], list[AggregatedRow]] = {}
+    for agg in report.aggregated_results:
+        by_model.setdefault((agg.runner_type, agg.model), []).append(agg)
 
-    n_cols = len(headers)
-    lines.append("| " + " | ".join("---" for _ in headers) + " |")
-    for (runner_type, model), rows in by_model.items():
-        total = sum(r.cost_usd for r in rows)
-        avg = total / len(rows)
+    n_cols = len(agg_headers)
+    lines.append("| " + " | ".join("---" for _ in agg_headers) + " |")
+    for (runner_type, model), agg_rows in by_model.items():
+        total = sum(r.total_cost_usd for r in agg_rows)
+        avg_per_prompt = total / len(agg_rows)
         empty = [blank] * (n_cols - 6)
         lines.append("| " + " | ".join(["**Total**", runner_type, model, blank, blank, f"**${total:.6f}**"] + empty) + " |")
-        lines.append("| " + " | ".join(["**Avg/prompt**", runner_type, model, blank, blank, f"**${avg:.6f}**"] + empty) + " |")
+        lines.append("| " + " | ".join(["**Avg/prompt**", runner_type, model, blank, blank, f"**${avg_per_prompt:.6f}**"] + empty) + " |")
 
     path.write_text("\n".join(lines) + "\n")
 
 
 def _print_summary(report: EvalReport) -> None:
-    """Print a rich table summary to the terminal."""
+    """Print a rich table of aggregated results to the terminal."""
     eval_names = report.config.evaluators
-    table = Table(title=f"Eval: {report.name}", show_lines=True)
-    table.add_column("Prompt", max_width=32)
+    blank = "—"
+
+    if report.statistical_note:
+        console.print(f"\n[yellow]Note:[/yellow] {report.statistical_note}\n")
+
+    title = f"Eval: {report.name}  (n={report.repeat} run{'s' if report.repeat != 1 else ''} per prompt)"
+    table = Table(title=title, show_lines=True)
+    table.add_column("Prompt", max_width=28)
     table.add_column("Runner")
     table.add_column("Model")
-    table.add_column("Latency", justify="right")
-    table.add_column("Tokens", justify="right")
-    table.add_column("Cost ($)", justify="right")
+    table.add_column("Runs", justify="right")
+    table.add_column("Avg Latency", justify="right")
+    table.add_column("Avg Cost ($)", justify="right")
     for e in eval_names:
-        table.add_column(e.title(), justify="right")
+        table.add_column(f"{e.title()} mean±std", justify="right")
 
-    for row in report.results:
-        prompt_label = row.prompt[:32] + ("…" if len(row.prompt) > 32 else "")
-        cost_cell = f"${row.cost_usd:.6f}" if row.cost_usd else "—"
-        score_cells = [f"{row.scores[e].score:.2f}" if e in row.scores else "—" for e in eval_names]
+    for agg in report.aggregated_results:
+        prompt_label = agg.prompt[:28] + ("…" if len(agg.prompt) > 28 else "")
+        score_cells = [
+            _fmt_score_stats(agg.scores[e]) if e in agg.scores else blank
+            for e in eval_names
+        ]
         table.add_row(
-            prompt_label,
-            row.runner_type,
-            row.model,
-            f"{row.latency_ms:.0f} ms",
-            str(row.input_tokens + row.output_tokens),
-            cost_cell,
+            prompt_label, agg.runner_type, agg.model,
+            str(agg.n_runs), f"{agg.avg_latency_ms:.0f} ms", f"${agg.avg_cost_usd:.6f}",
             *score_cells,
         )
 
-    # Summary rows
-    by_model: dict[tuple[str, str], list[ResultRow]] = {}
-    for row in report.results:
-        key = (row.runner_type, row.model)
-        by_model.setdefault(key, []).append(row)
+    by_model: dict[tuple[str, str], list[AggregatedRow]] = {}
+    for agg in report.aggregated_results:
+        by_model.setdefault((agg.runner_type, agg.model), []).append(agg)
 
-    for (runner_type, model), rows in by_model.items():
-        total = sum(r.cost_usd for r in rows)
-        avg = total / len(rows)
-        blank = "—"
-        n_score_blanks = len(eval_names)
+    for (runner_type, model), agg_rows in by_model.items():
+        total = sum(r.total_cost_usd for r in agg_rows)
+        avg = total / len(agg_rows)
+        n_blanks = len(eval_names)
         table.add_row(
             "[bold]Total[/bold]", runner_type, model, blank, blank,
-            f"[bold]${total:.6f}[/bold]", *([blank] * n_score_blanks),
+            f"[bold]${total:.6f}[/bold]", *([blank] * n_blanks),
         )
         table.add_row(
             "[bold]Avg/prompt[/bold]", runner_type, model, blank, blank,
-            f"[bold]${avg:.6f}[/bold]", *([blank] * n_score_blanks),
+            f"[bold]${avg:.6f}[/bold]", *([blank] * n_blanks),
         )
 
     console.print(table)
@@ -412,11 +548,14 @@ def _print_summary(report: EvalReport) -> None:
 def main(
     config: Path = typer.Option(..., help="Path to a YAML evaluation config."),
     output_dir: Optional[Path] = typer.Option(None, help="Override the output directory from the config."),
+    repeat: int = typer.Option(1, min=1, help="Number of times to run each prompt. Use ≥10 for meaningful confidence intervals."),
 ) -> None:
     """Run an LLM evaluation defined by a YAML config file.
 
     Prompts are run through all configured model runners concurrently, then scored
-    by all configured evaluators. Results are written to reports/ as JSON and markdown.
+    by all configured evaluators. With --repeat N, each prompt runs N times and
+    reports include mean ± std and 95% bootstrap confidence intervals per metric.
+    Results are written to reports/ as JSON and markdown.
     """
     raw = yaml.safe_load(config.read_text())
     eval_cfg = EvalConfig.model_validate(raw)
@@ -427,7 +566,7 @@ def main(
     out = Path(eval_cfg.output_dir)
     out.mkdir(parents=True, exist_ok=True)
 
-    report = asyncio.run(_run_eval(eval_cfg))
+    report = asyncio.run(_run_eval(eval_cfg, repeat=repeat))
 
     slug = eval_cfg.name.replace(" ", "_").lower()
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")

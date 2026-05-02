@@ -2,6 +2,7 @@
 from .base import BaseEvaluator, EvalResult
 from .coherence import CoherenceEvaluator
 from .faithfulness import FaithfulnessEvaluator
+from .pairwise import BasePairwiseEvaluator, ExplainabilityPairwise, PairwiseResult
 from .relevance import RelevanceEvaluator
 
 __all__ = [
@@ -10,4 +11,7 @@ __all__ = [
     "CoherenceEvaluator",
     "FaithfulnessEvaluator",
     "RelevanceEvaluator",
+    "BasePairwiseEvaluator",
+    "PairwiseResult",
+    "ExplainabilityPairwise",
 ]

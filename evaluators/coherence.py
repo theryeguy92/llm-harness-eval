@@ -47,6 +47,13 @@ class CoherenceEvaluator(BaseEvaluator):
     ) -> EvalResult:
         """Score coherence of a model response.
 
+        Rubric:
+            1.0 — Perfectly coherent; ideas flow logically with no contradictions.
+            0.7 — Mostly coherent with minor structural or logical issues.
+            0.5 — Partially coherent; noticeable gaps or inconsistencies.
+            0.3 — Low coherence; frequent jumps or contradictions.
+            0.0 — Completely incoherent or self-contradictory.
+
         Args:
             prompt: The original user prompt.
             response: The model response to evaluate.

@@ -79,6 +79,30 @@ Each evaluator class carries a `PROMPT_VERSION` constant (currently `"v1"` for a
 
 The reason: changing the judge system prompt — even a small wording change — can shift scores by 0.1–0.2. Without version tracking, you cannot tell whether a score change between two runs reflects a better model or a different evaluator. The convention is to bump `PROMPT_VERSION` to `"v2"` whenever the system prompt changes, and to re-run historical baselines before comparing across versions.
 
+## Pairwise vs Pointwise Evaluation
+
+This framework supports two evaluation modes.
+
+**Pointwise** (the default): each response is scored independently on a `[0, 1]` scale for a given dimension. You get absolute-ish scores that aggregate across prompts and models — useful for dashboards, trend tracking, and identifying regressions. The evaluators in `evaluators/coherence.py`, `relevance.py`, and `faithfulness.py` are all pointwise.
+
+**Pairwise**: two responses are shown to the judge simultaneously and it picks a winner (`"a"`, `"b"`, or `"tie"`). This catches preference differences that pointwise scores miss — a judge may rate both responses `0.80`, yet reliably prefer one when they appear side by side. `evaluators/pairwise.py` provides the base class and `ExplainabilityPairwise` as a concrete example.
+
+```python
+from evaluators.pairwise import ExplainabilityPairwise
+
+ev = ExplainabilityPairwise()
+result = await ev.compare(
+    prompt="Explain how transformers use attention.",
+    response_a=claude_output,
+    response_b=gemini_output,
+)
+# PairwiseResult(winner='a', confidence=0.8, reasoning='...')
+```
+
+**MT-Bench and AlpacaEval** both use pairwise evaluation at scale — MT-Bench uses GPT-4 to judge 80 multi-turn questions, AlpacaEval uses a win-rate against a reference model (text-davinci-003 or GPT-4). The key finding from both benchmarks: pairwise judgments correlate more strongly with human preference rankings than pointwise scores do, but they are more expensive (two judge calls per comparison instead of one) and harder to aggregate across more than two models.
+
+**Positional bias in pairwise evaluation.** LLM judges favor position A by a measurable margin — roughly 60-65% of the time in published studies even when responses are equivalent. The `BasePairwiseEvaluator` docstring shows the standard mitigation: run the comparison twice with A and B swapped and treat a verdict flip as a tie. This doubles judge cost but produces much more reliable results. If you skip the swap, bias the benchmark against the model that tends to appear in position B.
+
 ## Config Format
 
 ```yaml
