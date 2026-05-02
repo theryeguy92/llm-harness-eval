@@ -44,6 +44,41 @@ Each evaluator sends the prompt, the model's response, and (for RAG evals) the r
 
 The LLM-as-judge pattern scales to arbitrary criteria without labeled data, making it practical for teams that can't run human evals on every prompt change. The tradeoff: judge scores inherit the judge model's biases, so treat them as a signal rather than ground truth.
 
+## Evaluator Methodology & Known Limitations
+
+### How LLM-as-judge works here
+
+Each evaluator sends three things to Claude: the original user prompt, the model's response, and (for faithfulness) the reference context. A system prompt defines the scoring rubric for that dimension. The judge returns a JSON object — `{"score": float, "explanation": string}` — which is parsed and stored alongside the response.
+
+Evaluations for each (prompt × model) pair run concurrently via `asyncio.gather`, so wall-clock time scales with the slowest judge call, not with the number of evaluations.
+
+### Known biases
+
+**Verbosity bias.** LLM judges systematically assign higher scores to longer responses, even when a concise answer is more accurate. The coherence and relevance evaluators do not penalize length, so models that generate more tokens will tend to score higher on those dimensions. Faithfulness is less affected because it grounds scoring in a reference document.
+
+**Positional bias.** In pairwise-comparison setups, LLM judges favor whichever response appears first. This framework evaluates each response independently rather than side-by-side, which avoids the most direct form. A residual form can still appear if content placement in the judge prompt influences what the model attends to.
+
+**Self-preference.** Claude judges tend to favor Claude-style outputs — responses that are structured, hedged, and formatted the way Claude writes. The benchmark table above compares Claude Haiku against Gemini Flash using Claude as the judge, which likely inflates Claude's coherence and relevance scores. This is the strongest caveat on those numbers.
+
+### What this means when reading scores
+
+- A gap smaller than ~0.1 between two models on any single metric is within the noise of judge variability. Don't draw conclusions from it.
+- Faithfulness is the most reliable metric because it has an objective anchor (the reference document). Coherence and relevance are more subjective and more susceptible to the biases above.
+- Scores are relative signals within a single run, not absolute quality measurements. A coherence score of 0.85 does not mean "85% coherent" in any well-defined sense.
+- If you are using this framework to compare Claude against other models, Claude-as-judge will systematically favor Claude. Human spot-checks are the appropriate corrective for high-stakes decisions.
+
+### What a `--swap-judge` flag would do
+
+A `--swap-judge <model>` option would re-score all responses from a completed run using a different judge model — for example, re-evaluating with GPT-4o after an initial Claude-judged run. If scores converge, the results are more trustworthy. If they diverge by more than ~0.1 on average, the divergence is itself a finding: either the judge models have meaningfully different standards for the metric, or one is exhibiting strong self-preference.
+
+This is not yet implemented. The JSON output stores all raw responses, so the data needed for a retrospective re-score is already there.
+
+### Prompt versioning
+
+Each evaluator class carries a `PROMPT_VERSION` constant (currently `"v1"` for all three). This value is recorded in every JSON report under `evaluator_versions`.
+
+The reason: changing the judge system prompt — even a small wording change — can shift scores by 0.1–0.2. Without version tracking, you cannot tell whether a score change between two runs reflects a better model or a different evaluator. The convention is to bump `PROMPT_VERSION` to `"v2"` whenever the system prompt changes, and to re-run historical baselines before comparing across versions.
+
 ## Config Format
 
 ```yaml
