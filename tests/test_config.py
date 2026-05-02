@@ -46,7 +46,8 @@ def test_eval_config_missing_name_raises():
         )
 
 
-def test_eval_config_missing_prompts_raises():
+def test_eval_config_missing_prompts_and_dataset_raises():
+    """Both prompts and dataset absent must raise a ValidationError."""
     with pytest.raises(ValidationError):
         EvalConfig.model_validate({"name": "x", "runners": [], "evaluators": []})
 

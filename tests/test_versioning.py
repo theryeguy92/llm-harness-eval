@@ -41,7 +41,12 @@ def test_instance_inherits_class_constants(anthropic_env):
 
 
 def _minimal_config(evaluator_names: list[str]) -> EvalConfig:
-    return EvalConfig(name="test-run", prompts=[], runners=[], evaluators=evaluator_names)
+    return EvalConfig(
+        name="test-run",
+        prompts=[PromptConfig(id="q1", text="hello")],
+        runners=[],
+        evaluators=evaluator_names,
+    )
 
 
 def test_evaluator_versions_in_report_json():

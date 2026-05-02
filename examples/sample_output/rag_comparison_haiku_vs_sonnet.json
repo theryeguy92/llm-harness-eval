@@ -1,0 +1,778 @@
+{
+  "name": "rag_comparison_sample",
+  "timestamp": "2026-05-02T16:08:29.191110+00:00",
+  "config": {
+    "name": "rag_comparison_sample",
+    "prompts": [
+      {
+        "id": "solar_efficiency",
+        "text": "Based on the document, what efficiency improvements have solar panels achieved in recent years?",
+        "context": "Recent advances in photovoltaic technology have pushed commercial solar panel efficiency\nfrom around 15% in 2010 to over 23% in 2024. Multi-junction cells used in space applications\nnow exceed 47% efficiency under concentrated light. Perovskite-silicon tandem cells reached\n33.9% in laboratory conditions in 2024, setting a new record. Key drivers include improved\nlight trapping, better anti-reflective coatings, and reduced carrier recombination losses.\n"
+      },
+      {
+        "id": "transformer_attention",
+        "text": "According to the document, how does the self-attention mechanism work in transformers?",
+        "context": "Self-attention allows each token in a sequence to attend to every other token. For each\nposition, three vectors are computed from the input embedding: a Query (Q), a Key (K), and\na Value (V). Attention scores are calculated as the dot product of Q with all K vectors,\nscaled by the square root of the key dimension to prevent gradient vanishing. A softmax is\napplied to produce weights that sum to 1, which are then used to compute a weighted sum of\nthe V vectors. Multi-head attention runs this process in parallel with different learned\nprojections, allowing the model to attend to different representation subspaces simultaneously.\n"
+      },
+      {
+        "id": "paris_targets",
+        "text": "What specific emissions targets and financial commitments does the document describe for the Paris Agreement?",
+        "context": "The Paris Agreement, adopted in 2015, sets a global goal to limit warming to well below 2°C\nabove pre-industrial levels, with efforts to limit the increase to 1.5°C. Countries must\nsubmit Nationally Determined Contributions (NDCs) every five years with progressively\nambitious targets. Developed nations committed to providing $100 billion annually in climate\nfinance to developing countries through 2025. Net-zero greenhouse gas emissions should be\nachieved in the second half of this century. The first global stocktake in 2023 found current\npledges insufficient, projecting 2.5°C of warming by 2100 under current policies.\n"
+      }
+    ],
+    "runners": [
+      {
+        "type": "claude",
+        "model": "claude-haiku-4-5-20251001",
+        "max_tokens": 512,
+        "system": null
+      },
+      {
+        "type": "claude",
+        "model": "claude-sonnet-4-6",
+        "max_tokens": 512,
+        "system": null
+      }
+    ],
+    "evaluators": [
+      "coherence",
+      "relevance",
+      "faithfulness"
+    ],
+    "output_dir": "examples/sample_output/"
+  },
+  "results": [
+    {
+      "prompt_id": "solar_efficiency",
+      "prompt": "Based on the document, what efficiency improvements have solar panels achieved in recent years?",
+      "context": "Recent advances in photovoltaic technology have pushed commercial solar panel efficiency\nfrom around 15% in 2010 to over 23% in 2024. Multi-junction cells used in space applications\nnow exceed 47% efficiency under concentrated light. Perovskite-silicon tandem cells reached\n33.9% in laboratory conditions in 2024, setting a new record. Key drivers include improved\nlight trapping, better anti-reflective coatings, and reduced carrier recombination losses.\n",
+      "runner_type": "claude",
+      "model": "claude-haiku-4-5-20251001",
+      "response": "# Solar Panel Efficiency Improvements\n\nBased on the document, solar panels have achieved the following efficiency improvements in recent years:\n\n1. **Commercial Solar Panels**: Efficiency increased from approximately **15% in 2010 to over 23% in 2024** — roughly an 8 percentage point improvement over 14 years.\n\n2. **Multi-junction Cells** (space applications): Now exceed **47% efficiency under concentrated light**.\n\n3. **Perovskite-silicon Tandem Cells**: Reached a record **33.9% efficiency in laboratory conditions in 2024**.\n\n## Key Contributing Factors\n\nThe document identifies three main drivers behind these improvements:\n- Improved light trapping\n- Better anti-reflective coatings\n- Reduced carrier recombination losses\n\nThese advances demonstrate significant progress across different solar technology types, from standard commercial panels to specialized high-efficiency cells.",
+      "latency_ms": 2505.8,
+      "input_tokens": 138,
+      "output_tokens": 200,
+      "cost_usd": 0.0009104,
+      "scores": {
+        "coherence": {
+          "score": 0.85,
+          "explanation": "The response is well-structured and internally consistent, presenting efficiency improvements in a logical hierarchy (commercial, multi-junction, tandem cells) with specific numbers and contributing factors. However, there's a minor coherence issue: the response cites a document without any document being provided in the prompt, which creates a factual disconnect, though this doesn't undermine the internal logical structure of the answer itself."
+        },
+        "relevance": {
+          "score": 0.0,
+          "explanation": "The response cannot be evaluated for relevance because no document was provided in the prompt. The response appears to cite specific efficiency data and document findings, but without access to the actual document referenced, it is impossible to verify whether the response accurately reflects its contents or is fabricated."
+        },
+        "faithfulness": {
+          "score": 1.0,
+          "explanation": "All claims in the response are directly supported by the context. The specific efficiency figures for commercial panels (15% to 23%), multi-junction cells (47%), perovskite-silicon tandem cells (33.9%), and the three key drivers are all accurately cited from the provided document with no unsupported extrapolation."
+        }
+      }
+    },
+    {
+      "prompt_id": "solar_efficiency",
+      "prompt": "Based on the document, what efficiency improvements have solar panels achieved in recent years?",
+      "context": "Recent advances in photovoltaic technology have pushed commercial solar panel efficiency\nfrom around 15% in 2010 to over 23% in 2024. Multi-junction cells used in space applications\nnow exceed 47% efficiency under concentrated light. Perovskite-silicon tandem cells reached\n33.9% in laboratory conditions in 2024, setting a new record. Key drivers include improved\nlight trapping, better anti-reflective coatings, and reduced carrier recombination losses.\n",
+      "runner_type": "claude",
+      "model": "claude-haiku-4-5-20251001",
+      "response": "# Solar Panel Efficiency Improvements\n\nBased on the document, solar panels have achieved significant efficiency improvements in recent years:\n\n1. **Commercial Solar Panels**: Efficiency increased from approximately **15% in 2010 to over 23% in 2024** — roughly an 8 percentage point improvement over 14 years.\n\n2. **Multi-Junction Cells (Space Applications)**: These specialized cells now exceed **47% efficiency** when operating under concentrated light.\n\n3. **Perovskite-Silicon Tandem Cells**: Achieved a laboratory record of **33.9% efficiency in 2024**.\n\n## Key Drivers of Improvement\n\nThe document identifies three main technological factors behind these gains:\n- Improved light trapping\n- Better anti-reflective coatings\n- Reduced carrier recombination losses",
+      "latency_ms": 2274.1,
+      "input_tokens": 138,
+      "output_tokens": 184,
+      "cost_usd": 0.0008464,
+      "scores": {
+        "coherence": {
+          "score": 0.85,
+          "explanation": "The response is well-structured and internally consistent, presenting specific efficiency improvements with clear numerical data and organized categories. However, it lacks explicit attribution to the document being referenced, making it impossible to verify coherence without seeing the actual document—a minor logical gap in demonstrating that claims are truly document-based."
+        },
+        "relevance": {
+          "score": 0.0,
+          "explanation": "The response cannot be evaluated for relevance because no document was provided in the prompt. The response presents specific efficiency data and improvements, but without access to the source document, it is impossible to verify whether these claims are actually based on that document or are fabricated."
+        },
+        "faithfulness": {
+          "score": 1.0,
+          "explanation": "All claims in the response are directly supported by the context. The efficiency figures (15% in 2010, over 23% in 2024, 47% for multi-junction cells, 33.9% for perovskite-silicon tandem cells) are accurately cited, and the three key drivers are explicitly mentioned in the source material."
+        }
+      }
+    },
+    {
+      "prompt_id": "solar_efficiency",
+      "prompt": "Based on the document, what efficiency improvements have solar panels achieved in recent years?",
+      "context": "Recent advances in photovoltaic technology have pushed commercial solar panel efficiency\nfrom around 15% in 2010 to over 23% in 2024. Multi-junction cells used in space applications\nnow exceed 47% efficiency under concentrated light. Perovskite-silicon tandem cells reached\n33.9% in laboratory conditions in 2024, setting a new record. Key drivers include improved\nlight trapping, better anti-reflective coatings, and reduced carrier recombination losses.\n",
+      "runner_type": "claude",
+      "model": "claude-haiku-4-5-20251001",
+      "response": "# Solar Panel Efficiency Improvements\n\nBased on the document, solar panels have achieved the following efficiency improvements in recent years:\n\n1. **Commercial Solar Panels**: Efficiency increased from approximately 15% in 2010 to over 23% in 2024 (an increase of about 8 percentage points over 14 years)\n\n2. **Multi-Junction Cells** (space applications): Now exceed 47% efficiency under concentrated light\n\n3. **Perovskite-Silicon Tandem Cells**: Reached 33.9% efficiency in laboratory conditions in 2024, setting a new record\n\n**Key technological drivers** enabling these improvements include:\n- Improved light trapping\n- Better anti-reflective coatings\n- Reduced carrier recombination losses",
+      "latency_ms": 2154.3,
+      "input_tokens": 138,
+      "output_tokens": 173,
+      "cost_usd": 0.0008024,
+      "scores": {
+        "coherence": {
+          "score": 0.85,
+          "explanation": "The response is well-structured and internally consistent, presenting specific efficiency improvements with clear data points and logical organization. However, it claims to be based on 'the document' without the document being provided in the prompt, creating a logical disconnect between the framing and what can be verified."
+        },
+        "relevance": {
+          "score": 0.0,
+          "explanation": "The response cannot be evaluated for relevance because no document was provided in the prompt. The evaluator cannot verify whether the specific efficiency figures and technological improvements cited actually come from a referenced document, making it impossible to assess if the response accurately addresses the prompt's requirement to base the answer on 'the document.'"
+        },
+        "faithfulness": {
+          "score": 1.0,
+          "explanation": "Every claim in the response is directly supported by the context. The efficiency figures for commercial panels (15% in 2010 to over 23% in 2024), multi-junction cells (exceeding 47%), perovskite-silicon tandem cells (33.9%), and the three technological drivers are all accurately cited from the provided text."
+        }
+      }
+    },
+    {
+      "prompt_id": "solar_efficiency",
+      "prompt": "Based on the document, what efficiency improvements have solar panels achieved in recent years?",
+      "context": "Recent advances in photovoltaic technology have pushed commercial solar panel efficiency\nfrom around 15% in 2010 to over 23% in 2024. Multi-junction cells used in space applications\nnow exceed 47% efficiency under concentrated light. Perovskite-silicon tandem cells reached\n33.9% in laboratory conditions in 2024, setting a new record. Key drivers include improved\nlight trapping, better anti-reflective coatings, and reduced carrier recombination losses.\n",
+      "runner_type": "claude",
+      "model": "claude-sonnet-4-6",
+      "response": "## Solar Panel Efficiency Improvements\n\nBased on the document, here are the key efficiency achievements:\n\n### Commercial Solar Panels\n- Efficiency increased from **~15% in 2010** to **over 23% in 2024**, representing a significant improvement over roughly 14 years\n\n### Specialized/Advanced Technologies\n- **Multi-junction cells** (used in space applications) now exceed **47% efficiency** under concentrated light\n- **Perovskite-silicon tandem cells** reached **33.9%** in laboratory conditions in 2024, setting a new record\n\n### Key Drivers of Improvement\nThe document attributes these gains to:\n1. Improved **light trapping**\n2. Better **anti-reflective coatings**\n3. Reduced **carrier recombination losses**\n\nOverall, the document highlights a clear upward trend in solar efficiency across both commercial and cutting-edge applications, with laboratory and space technologies significantly outperforming standard commercial panels.",
+      "latency_ms": 4615.6,
+      "input_tokens": 138,
+      "output_tokens": 217,
+      "cost_usd": 0.003669,
+      "scores": {
+        "coherence": {
+          "score": 0.85,
+          "explanation": "The response is well-structured and internally consistent, with clear categorization of efficiency improvements across commercial and specialized solar technologies. However, it cannot be evaluated for logical coherence alone since the response claims to be based on 'the document,' but no document was provided in the prompt, creating an inherent contradiction in the response's framing."
+        },
+        "relevance": {
+          "score": 0.0,
+          "explanation": "The response cannot be evaluated for relevance because no document was provided in the prompt. The response appears to fabricate specific data and claims (15% in 2010, 23% in 2024, 47% multi-junction cells, 33.9% perovskite-silicon tandem cells) that cannot be verified against any source document."
+        },
+        "faithfulness": {
+          "score": 1.0,
+          "explanation": "Every claim in the response is directly supported by the context. The efficiency figures (15% in 2010 to 23% in 2024 for commercial panels, 47% for multi-junction cells, 33.9% for perovskite-silicon tandem cells), the applications mentioned (space applications, laboratory conditions), and the three key drivers (light trapping, anti-reflective coatings, carrier recombination losses) are all explicitly stated in the provided context."
+        }
+      }
+    },
+    {
+      "prompt_id": "solar_efficiency",
+      "prompt": "Based on the document, what efficiency improvements have solar panels achieved in recent years?",
+      "context": "Recent advances in photovoltaic technology have pushed commercial solar panel efficiency\nfrom around 15% in 2010 to over 23% in 2024. Multi-junction cells used in space applications\nnow exceed 47% efficiency under concentrated light. Perovskite-silicon tandem cells reached\n33.9% in laboratory conditions in 2024, setting a new record. Key drivers include improved\nlight trapping, better anti-reflective coatings, and reduced carrier recombination losses.\n",
+      "runner_type": "claude",
+      "model": "claude-sonnet-4-6",
+      "response": "## Solar Panel Efficiency Improvements\n\nBased on the document, here are the key efficiency improvements achieved in recent years:\n\n### Commercial Solar Panels\n- Efficiency increased from **~15% in 2010** to **over 23% in 2024**, representing a significant gain over roughly 14 years.\n\n### Specialized Applications\n- **Space-grade multi-junction cells** now exceed **47% efficiency** when operating under concentrated light conditions.\n- **Perovskite-silicon tandem cells** set a new laboratory record of **33.9% in 2024**.\n\n### Key Drivers of These Improvements\nThe document attributes these gains to:\n1. **Improved light trapping**\n2. **Better anti-reflective coatings**\n3. **Reduced carrier recombination losses**\n\nOverall, the data shows substantial progress across both commercial and research-level solar technologies, with laboratory and specialized cells significantly outperforming standard commercial panels.",
+      "latency_ms": 4550.4,
+      "input_tokens": 138,
+      "output_tokens": 214,
+      "cost_usd": 0.003624,
+      "scores": {
+        "coherence": {
+          "score": 0.85,
+          "explanation": "The response is logically coherent and well-structured, presenting efficiency improvements in a clear hierarchical format with specific metrics and drivers. However, it lacks internal verification—the response cites a document without confirming whether that document was actually provided in the prompt, creating a potential disconnect between the claimed source and the actual information presented."
+        },
+        "relevance": {
+          "score": 0.0,
+          "explanation": "The response cannot be evaluated for relevance because no document was provided in the prompt. The evaluator has no way to verify whether the specific efficiency figures, percentages, and technical details cited actually appear in the referenced document, making it impossible to assess whether the response accurately addresses what the document contains."
+        },
+        "faithfulness": {
+          "score": 1.0,
+          "explanation": "Every claim in the response is directly supported by the provided context. The response accurately cites the efficiency improvements for commercial panels (15% to 23%), multi-junction cells (>47%), perovskite-silicon tandem cells (33.9%), and correctly identifies all three key drivers mentioned in the context."
+        }
+      }
+    },
+    {
+      "prompt_id": "solar_efficiency",
+      "prompt": "Based on the document, what efficiency improvements have solar panels achieved in recent years?",
+      "context": "Recent advances in photovoltaic technology have pushed commercial solar panel efficiency\nfrom around 15% in 2010 to over 23% in 2024. Multi-junction cells used in space applications\nnow exceed 47% efficiency under concentrated light. Perovskite-silicon tandem cells reached\n33.9% in laboratory conditions in 2024, setting a new record. Key drivers include improved\nlight trapping, better anti-reflective coatings, and reduced carrier recombination losses.\n",
+      "runner_type": "claude",
+      "model": "claude-sonnet-4-6",
+      "response": "## Solar Panel Efficiency Improvements\n\nBased on the document, here are the key efficiency improvements highlighted:\n\n### Commercial Solar Panels\n- Efficiency rose from **~15% in 2010** to **over 23% in 2024**, representing a significant gain over roughly 14 years.\n\n### Specialized Applications\n- **Multi-junction cells** (used in space) now exceed **47% efficiency** under concentrated light conditions.\n- **Perovskite-silicon tandem cells** achieved a record **33.9%** in laboratory settings in 2024.\n\n### Key Drivers of Improvement\nThe document attributes these gains to:\n1. **Improved light trapping**\n2. **Better anti-reflective coatings**\n3. **Reduced carrier recombination losses**\n\n---\n\n**In summary**, solar technology has seen substantial efficiency gains across commercial and specialized sectors, with laboratory and space-grade technologies pushing well beyond what is currently available for everyday consumer use.",
+      "latency_ms": 4882.3,
+      "input_tokens": 138,
+      "output_tokens": 218,
+      "cost_usd": 0.003684,
+      "scores": {
+        "coherence": {
+          "score": 0.85,
+          "explanation": "The response is well-structured and internally consistent, presenting efficiency improvements across three clear categories with specific numerical data and logical connections between causes and outcomes. However, without access to the original document, the coherence cannot account for factual accuracy—the response assumes the cited figures and attributes are document-supported, which slightly limits confidence in complete logical soundness."
+        },
+        "relevance": {
+          "score": 0.0,
+          "explanation": "The response cannot be evaluated for relevance because no document was provided in the prompt. The response appears to be fabricated data rather than information extracted from an actual document. The prompt asks specifically 'Based on the document' but no document is referenced or attached."
+        },
+        "faithfulness": {
+          "score": 1.0,
+          "explanation": "All claims in the response are directly supported by the context. The response accurately reports the efficiency improvements (15% to 23% for commercial panels, 47% for multi-junction cells, 33.9% for perovskite-silicon tandem cells), correctly identifies the applications, and lists all three key drivers mentioned in the context without adding unsupported information."
+        }
+      }
+    },
+    {
+      "prompt_id": "transformer_attention",
+      "prompt": "According to the document, how does the self-attention mechanism work in transformers?",
+      "context": "Self-attention allows each token in a sequence to attend to every other token. For each\nposition, three vectors are computed from the input embedding: a Query (Q), a Key (K), and\na Value (V). Attention scores are calculated as the dot product of Q with all K vectors,\nscaled by the square root of the key dimension to prevent gradient vanishing. A softmax is\napplied to produce weights that sum to 1, which are then used to compute a weighted sum of\nthe V vectors. Multi-head attention runs this process in parallel with different learned\nprojections, allowing the model to attend to different representation subspaces simultaneously.\n",
+      "runner_type": "claude",
+      "model": "claude-haiku-4-5-20251001",
+      "response": "# Self-Attention Mechanism in Transformers\n\nAccording to the document, self-attention works through the following process:\n\n1. **Computing Three Vectors**: For each position, three vectors are derived from the input embedding:\n   - Query (Q)\n   - Key (K)\n   - Value (V)\n\n2. **Calculating Attention Scores**: Attention scores are computed as the dot product of the Query with all Key vectors, scaled by the square root of the key dimension (to prevent gradient vanishing).\n\n3. **Applying Softmax**: A softmax function is applied to convert the attention scores into weights that sum to 1.\n\n4. **Computing Weighted Sum**: These weights are used to calculate a weighted sum of the Value vectors, which produces the final output.\n\n5. **Multi-Head Extension**: Multi-head attention runs this entire process in parallel using different learned projections, enabling the model to simultaneously attend to different representation subspaces.\n\nIn essence, each token can attend to every other token in the sequence, with the mechanism determining how much attention should be paid to each token through the Q-K-V computation and softmax weighting.",
+      "latency_ms": 2541.1,
+      "input_tokens": 168,
+      "output_tokens": 255,
+      "cost_usd": 0.0011544,
+      "scores": {
+        "coherence": {
+          "score": 0.92,
+          "explanation": "The response is highly coherent with a logical, step-by-step explanation of self-attention that flows naturally from input to output. The structure is clear and each component builds on the previous one, with only a minor caveat that it attributes information to 'the document' without showing the actual document content, which creates a slight logical gap."
+        },
+        "relevance": {
+          "score": 0.5,
+          "explanation": "The response provides a comprehensive technical explanation of self-attention mechanisms in transformers, but critically lacks any reference to or citation from an actual document. Since the prompt specifically asks 'according to the document,' the response fails to validate that it's drawing from the document being referenced, making it impossible to verify accuracy against the source material."
+        },
+        "faithfulness": {
+          "score": 1.0,
+          "explanation": "The response accurately captures all key components of the self-attention mechanism described in the context, including the Q-K-V vectors, dot product scaling, softmax weighting, and multi-head attention. Every claim is directly supported by the provided text with no hallucinations or unsupported extrapolations."
+        }
+      }
+    },
+    {
+      "prompt_id": "transformer_attention",
+      "prompt": "According to the document, how does the self-attention mechanism work in transformers?",
+      "context": "Self-attention allows each token in a sequence to attend to every other token. For each\nposition, three vectors are computed from the input embedding: a Query (Q), a Key (K), and\na Value (V). Attention scores are calculated as the dot product of Q with all K vectors,\nscaled by the square root of the key dimension to prevent gradient vanishing. A softmax is\napplied to produce weights that sum to 1, which are then used to compute a weighted sum of\nthe V vectors. Multi-head attention runs this process in parallel with different learned\nprojections, allowing the model to attend to different representation subspaces simultaneously.\n",
+      "runner_type": "claude",
+      "model": "claude-haiku-4-5-20251001",
+      "response": "# How Self-Attention Works in Transformers\n\nAccording to the document, the self-attention mechanism operates through the following steps:\n\n1. **Vector Computation**: For each position, three vectors are derived from the input embedding:\n   - Query (Q)\n   - Key (K)\n   - Value (V)\n\n2. **Attention Score Calculation**: \n   - Compute dot products between the Query and all Key vectors\n   - Scale the scores by the square root of the key dimension (to prevent gradient vanishing)\n\n3. **Weight Generation**:\n   - Apply softmax to the scaled scores to produce weights that sum to 1\n\n4. **Weighted Output**:\n   - Compute a weighted sum of the Value vectors using these weights\n\n5. **Multi-Head Attention** (parallel processing):\n   - Run the entire process multiple times in parallel with different learned projections\n   - This allows the model to attend to different representation subspaces simultaneously\n\n**Key Feature**: Each token can attend to every other token in the sequence through this mechanism.",
+      "latency_ms": 2595.0,
+      "input_tokens": 168,
+      "output_tokens": 235,
+      "cost_usd": 0.0010744,
+      "scores": {
+        "coherence": {
+          "score": 0.95,
+          "explanation": "The response is highly coherent and well-structured, presenting the self-attention mechanism in a logical, step-by-step progression from input vectors through to multi-head attention. The explanation flows naturally and maintains internal consistency throughout, with only minor potential ambiguity about whether this reflects a specific document versus general transformer knowledge."
+        },
+        "relevance": {
+          "score": 0.7,
+          "explanation": "The response provides a comprehensive and accurate explanation of self-attention mechanism that aligns with standard transformer documentation. However, the prompt specifically asks 'According to the document,' suggesting the user is referring to a specific document that should have been provided but wasn't included in the context, making it impossible to verify if the response accurately reflects that particular document's explanation."
+        },
+        "faithfulness": {
+          "score": 1.0,
+          "explanation": "The response accurately summarizes all key claims from the context about self-attention: the three vectors (Q, K, V), the dot product calculation, scaling by square root of key dimension, softmax application, weighted sum of values, and multi-head attention with parallel processing. Every statement is directly supported by the provided text."
+        }
+      }
+    },
+    {
+      "prompt_id": "transformer_attention",
+      "prompt": "According to the document, how does the self-attention mechanism work in transformers?",
+      "context": "Self-attention allows each token in a sequence to attend to every other token. For each\nposition, three vectors are computed from the input embedding: a Query (Q), a Key (K), and\na Value (V). Attention scores are calculated as the dot product of Q with all K vectors,\nscaled by the square root of the key dimension to prevent gradient vanishing. A softmax is\napplied to produce weights that sum to 1, which are then used to compute a weighted sum of\nthe V vectors. Multi-head attention runs this process in parallel with different learned\nprojections, allowing the model to attend to different representation subspaces simultaneously.\n",
+      "runner_type": "claude",
+      "model": "claude-haiku-4-5-20251001",
+      "response": "# Self-Attention Mechanism in Transformers\n\nAccording to the document, self-attention works through the following process:\n\n1. **Token Interaction**: Each token in a sequence can attend to every other token.\n\n2. **Vector Computation**: For each position, three vectors are derived from the input embedding:\n   - Query (Q)\n   - Key (K)\n   - Value (V)\n\n3. **Attention Score Calculation**: \n   - Attention scores are computed as the dot product of Q with all K vectors\n   - These scores are scaled by the square root of the key dimension (to prevent gradient vanishing)\n\n4. **Weight Generation**: A softmax function is applied to convert attention scores into weights that sum to 1\n\n5. **Output Computation**: A weighted sum of the V vectors is calculated using these weights\n\n6. **Multi-Head Extension**: Multi-head attention runs this entire process in parallel using different learned projections, enabling the model to simultaneously attend to different representation subspaces.\n\nThis mechanism allows the transformer to dynamically focus on relevant parts of the input sequence when processing each token.",
+      "latency_ms": 2228.2,
+      "input_tokens": 168,
+      "output_tokens": 246,
+      "cost_usd": 0.0011184,
+      "scores": {
+        "coherence": {
+          "score": 0.92,
+          "explanation": "The response is highly coherent and logically structured, presenting the self-attention mechanism as a clear step-by-step process that flows naturally from input to output. The explanation is internally consistent and each component logically supports the overall mechanism, though it lacks explicit citation of a source document which slightly undermines the claim of \"according to the document.\""
+        },
+        "relevance": {
+          "score": 0.5,
+          "explanation": "The response provides a technically accurate explanation of self-attention mechanisms in transformers, but it cannot be verified as coming from a specific document since no document was provided in the prompt. The answer describes general transformer architecture knowledge rather than citing specific content from an actual source document."
+        },
+        "faithfulness": {
+          "score": 0.95,
+          "explanation": "The response accurately captures all key claims from the context about self-attention mechanisms, including token interaction, the Q/K/V vectors, attention score calculation with scaling, softmax normalization, weighted sum computation, and multi-head attention. The only minor addition is the final sentence about \"dynamically focus on relevant parts,\" which is a reasonable inference but not explicitly stated in the context."
+        }
+      }
+    },
+    {
+      "prompt_id": "transformer_attention",
+      "prompt": "According to the document, how does the self-attention mechanism work in transformers?",
+      "context": "Self-attention allows each token in a sequence to attend to every other token. For each\nposition, three vectors are computed from the input embedding: a Query (Q), a Key (K), and\na Value (V). Attention scores are calculated as the dot product of Q with all K vectors,\nscaled by the square root of the key dimension to prevent gradient vanishing. A softmax is\napplied to produce weights that sum to 1, which are then used to compute a weighted sum of\nthe V vectors. Multi-head attention runs this process in parallel with different learned\nprojections, allowing the model to attend to different representation subspaces simultaneously.\n",
+      "runner_type": "claude",
+      "model": "claude-sonnet-4-6",
+      "response": "## Self-Attention Mechanism in Transformers\n\nAccording to the document, self-attention works through the following steps:\n\n### Vector Computation\nFor each position in a sequence, **three vectors** are derived from the input embedding:\n- **Query (Q)**\n- **Key (K)**\n- **Value (V)**\n\n### Attention Score Calculation\n1. Scores are computed via the **dot product of Q with all K vectors**\n2. Results are **scaled by the square root of the key dimension** — this prevents gradient vanishing\n\n### Weight Generation & Output\n3. A **softmax function** is applied to the scores, producing weights that sum to 1\n4. These weights are used to compute a **weighted sum of the V vectors**, producing the final output\n\n### Multi-Head Attention\nThe document also notes that **multi-head attention** runs this entire process **in parallel** using different learned projections, which enables the model to attend to **multiple representation subspaces simultaneously**.\n\n---\n\nIn essence, self-attention allows every token in a sequence to \"look at\" every other token, dynamically determining how much focus to place on each position when producing a representation.",
+      "latency_ms": 5087.3,
+      "input_tokens": 168,
+      "output_tokens": 260,
+      "cost_usd": 0.004404,
+      "scores": {
+        "coherence": {
+          "score": 0.92,
+          "explanation": "The response is well-structured and logically coherent, presenting the self-attention mechanism in clear sequential steps (vector computation → score calculation → weight generation → output). The explanation flows naturally from basic concepts to more advanced ideas (multi-head attention), and the concluding summary reinforces the main concept without contradiction. Minor consideration: the response assumes document content without explicitly confirming it exists, though this is appropriate given the prompt's framing."
+        },
+        "relevance": {
+          "score": 0.85,
+          "explanation": "The response provides a comprehensive, well-structured explanation of self-attention mechanisms in transformers, covering query-key-value vectors, dot-product scoring, scaling, softmax weighting, and multi-head attention. The only minor limitation is that without seeing the actual document, we cannot verify if all details perfectly match the source material, though the explanation represents standard transformer architecture correctly."
+        },
+        "faithfulness": {
+          "score": 0.95,
+          "explanation": "The response accurately captures all major components of self-attention described in the context: the three vectors (Q, K, V), dot product calculation, scaling by square root of key dimension, softmax weighting, and multi-head attention. The final sentence about tokens attending to each other is directly supported by the opening statement in the context. The only minor issue is the concluding phrase about 'dynamically determining' which adds slight interpretive language not explicitly stated, but this is a minimal extrapolation consistent with the core concepts."
+        }
+      }
+    },
+    {
+      "prompt_id": "transformer_attention",
+      "prompt": "According to the document, how does the self-attention mechanism work in transformers?",
+      "context": "Self-attention allows each token in a sequence to attend to every other token. For each\nposition, three vectors are computed from the input embedding: a Query (Q), a Key (K), and\na Value (V). Attention scores are calculated as the dot product of Q with all K vectors,\nscaled by the square root of the key dimension to prevent gradient vanishing. A softmax is\napplied to produce weights that sum to 1, which are then used to compute a weighted sum of\nthe V vectors. Multi-head attention runs this process in parallel with different learned\nprojections, allowing the model to attend to different representation subspaces simultaneously.\n",
+      "runner_type": "claude",
+      "model": "claude-sonnet-4-6",
+      "response": "## Self-Attention Mechanism in Transformers\n\nAccording to the document, self-attention works through the following steps:\n\n### Vector Computation\nFor each position in the sequence, **three vectors are derived from the input embedding**:\n- **Query (Q)**\n- **Key (K)**\n- **Value (V)**\n\n### Attention Score Calculation\n1. Scores are computed as the **dot product of Q with all K vectors**\n2. Results are **scaled by the square root of the key dimension** to prevent gradient vanishing\n3. A **softmax function** is applied to convert scores into weights that sum to 1\n\n### Output Generation\n- The weights are used to compute a **weighted sum of the V vectors**, producing the final output for each position\n\n### Multi-Head Attention\nThe document also notes that **multi-head attention** runs this entire process **in parallel with different learned projections**, enabling the model to simultaneously attend to **different representation subspaces**.\n\n### Key Benefit\nThe mechanism allows **each token to attend to every other token** in the sequence, giving the model a global view of context.",
+      "latency_ms": 4740.7,
+      "input_tokens": 168,
+      "output_tokens": 248,
+      "cost_usd": 0.004224,
+      "scores": {
+        "coherence": {
+          "score": 0.95,
+          "explanation": "The response is excellently coherent with a clear logical flow from basic concepts (Q, K, V vectors) through computation steps (dot product, scaling, softmax) to output generation and extensions (multi-head attention). The hierarchical structure is well-organized and each section builds naturally on previous ones with no contradictions or gaps."
+        },
+        "relevance": {
+          "score": 0.85,
+          "explanation": "The response provides a comprehensive and well-structured explanation of self-attention mechanism that directly addresses the prompt. It covers the core steps (query-key-value computation, attention scoring, softmax, and weighted aggregation) and includes relevant details about multi-head attention. The only minor limitation is that without seeing the actual document, we cannot verify that all these details are explicitly stated in it, though the explanation is technically accurate and thoroughly addresses what was asked."
+        },
+        "faithfulness": {
+          "score": 1.0,
+          "explanation": "Every claim in the response is directly supported by the provided context. The response accurately describes the three vectors (Q, K, V), the dot product calculation, the scaling mechanism, softmax application, weighted sum computation, multi-head attention with parallel projections, and the ability for tokens to attend to all other tokens—all of which are explicitly stated in the source material."
+        }
+      }
+    },
+    {
+      "prompt_id": "transformer_attention",
+      "prompt": "According to the document, how does the self-attention mechanism work in transformers?",
+      "context": "Self-attention allows each token in a sequence to attend to every other token. For each\nposition, three vectors are computed from the input embedding: a Query (Q), a Key (K), and\na Value (V). Attention scores are calculated as the dot product of Q with all K vectors,\nscaled by the square root of the key dimension to prevent gradient vanishing. A softmax is\napplied to produce weights that sum to 1, which are then used to compute a weighted sum of\nthe V vectors. Multi-head attention runs this process in parallel with different learned\nprojections, allowing the model to attend to different representation subspaces simultaneously.\n",
+      "runner_type": "claude",
+      "model": "claude-sonnet-4-6",
+      "response": "## Self-Attention Mechanism in Transformers\n\nAccording to the document, the self-attention mechanism works through the following steps:\n\n### Vector Computation\nFor each position in the sequence, **three vectors are derived from the input embedding**:\n- **Query (Q)**\n- **Key (K)**\n- **Value (V)**\n\n### Attention Score Calculation\n1. Scores are computed by taking the **dot product of Q with all K vectors**\n2. The scores are **scaled by the square root of the key dimension** — this prevents gradient vanishing\n3. A **softmax function** is applied to normalize the scores into weights that sum to 1\n\n### Output Generation\n- The final output is a **weighted sum of the V vectors**, using the softmax weights\n\n### Multi-Head Attention\nThe document also notes that **multi-head attention** runs this entire process **in parallel with different learned projections**, which enables the model to simultaneously attend to different representation subspaces.\n\nIn essence, self-attention allows **every token to attend to every other token** in the sequence, dynamically determining which parts of the input are most relevant to each position.",
+      "latency_ms": 4646.6,
+      "input_tokens": 168,
+      "output_tokens": 255,
+      "cost_usd": 0.004329,
+      "scores": {
+        "coherence": {
+          "score": 0.95,
+          "explanation": "The response is highly coherent and logically well-structured, presenting self-attention in a clear progression: input vectors (Q, K, V) → attention score calculation (dot product, scaling, softmax) → output generation → multi-head extension. The explanation is internally consistent with no contradictions, though it makes claims about a specific document without verification of that document's actual content."
+        },
+        "relevance": {
+          "score": 0.85,
+          "explanation": "The response provides a comprehensive and well-structured explanation of self-attention mechanisms that aligns with standard transformer architecture. However, without access to the specific document being referenced, we cannot verify if this precisely matches the document's explanation or if any details are inaccurate/missing relative to that source material."
+        },
+        "faithfulness": {
+          "score": 1.0,
+          "explanation": "The response accurately represents all key components described in the context: the three vectors (Q, K, V), the dot product calculation, scaling by square root of key dimension, softmax normalization, weighted sum of V vectors, and multi-head attention with parallel processing. Every claim is directly supported by the provided context."
+        }
+      }
+    },
+    {
+      "prompt_id": "paris_targets",
+      "prompt": "What specific emissions targets and financial commitments does the document describe for the Paris Agreement?",
+      "context": "The Paris Agreement, adopted in 2015, sets a global goal to limit warming to well below 2°C\nabove pre-industrial levels, with efforts to limit the increase to 1.5°C. Countries must\nsubmit Nationally Determined Contributions (NDCs) every five years with progressively\nambitious targets. Developed nations committed to providing $100 billion annually in climate\nfinance to developing countries through 2025. Net-zero greenhouse gas emissions should be\nachieved in the second half of this century. The first global stocktake in 2023 found current\npledges insufficient, projecting 2.5°C of warming by 2100 under current policies.\n",
+      "runner_type": "claude",
+      "model": "claude-haiku-4-5-20251001",
+      "response": "# Emissions Targets and Financial Commitments in the Paris Agreement\n\n## Emissions Targets\n\n- **Temperature goal**: Limit warming to well below 2°C above pre-industrial levels, with efforts to limit it to 1.5°C\n- **Long-term goal**: Achieve net-zero greenhouse gas emissions in the second half of this century\n- **NDC requirement**: Countries must submit Nationally Determined Contributions every five years with progressively ambitious targets\n\n## Financial Commitments\n\n- **Annual climate finance**: Developed nations committed to providing **$100 billion per year** to developing countries\n- **Timeline**: This commitment extends through 2025\n\n## Notable Finding\n\nThe document notes that despite these commitments, the 2023 global stocktake found current pledges to be **insufficient**, projecting 2.5°C of warming by 2100 under current policies—exceeding the Paris Agreement's stated goals.",
+      "latency_ms": 1954.4,
+      "input_tokens": 177,
+      "output_tokens": 206,
+      "cost_usd": 0.0009656,
+      "scores": {
+        "coherence": {
+          "score": 0.85,
+          "explanation": "The response is well-structured and logically coherent, presenting emissions targets and financial commitments in a clear, organized manner with consistent flow between sections. However, it slightly lacks specificity about which document is being referenced and doesn't explicitly acknowledge uncertainty about undocumented specific targets that may or may not appear in the original Paris Agreement text."
+        },
+        "relevance": {
+          "score": 0.75,
+          "explanation": "The response accurately describes the main emissions targets (2°C/1.5°C goals, net-zero by mid-century, NDC requirements) and the primary financial commitment ($100 billion annually through 2025) from the Paris Agreement. However, it lacks specificity on other financial mechanisms, adaptation funds, or detailed breakdowns that might be in the actual document, and the inclusion of the 2023 global stocktake assessment goes slightly beyond what the Paris Agreement itself formally describes."
+        },
+        "faithfulness": {
+          "score": 1.0,
+          "explanation": "Every claim in the response is directly supported by the provided context. The response accurately presents the temperature goals, NDC requirements, net-zero timeline, the $100 billion annual climate finance commitment through 2025, and the 2023 stocktake findings without adding unsupported information or contradictions."
+        }
+      }
+    },
+    {
+      "prompt_id": "paris_targets",
+      "prompt": "What specific emissions targets and financial commitments does the document describe for the Paris Agreement?",
+      "context": "The Paris Agreement, adopted in 2015, sets a global goal to limit warming to well below 2°C\nabove pre-industrial levels, with efforts to limit the increase to 1.5°C. Countries must\nsubmit Nationally Determined Contributions (NDCs) every five years with progressively\nambitious targets. Developed nations committed to providing $100 billion annually in climate\nfinance to developing countries through 2025. Net-zero greenhouse gas emissions should be\nachieved in the second half of this century. The first global stocktake in 2023 found current\npledges insufficient, projecting 2.5°C of warming by 2100 under current policies.\n",
+      "runner_type": "claude",
+      "model": "claude-haiku-4-5-20251001",
+      "response": "# Emissions Targets and Financial Commitments in the Paris Agreement\n\n## Emissions Targets\n\nThe document describes the following emissions targets:\n\n1. **Primary goal**: Limit global warming to **well below 2°C** above pre-industrial levels\n2. **Aspirational goal**: Efforts to limit the increase to **1.5°C**\n3. **Long-term objective**: Achieve **net-zero greenhouse gas emissions in the second half of this century**\n\n## Financial Commitments\n\n1. **Amount**: **$100 billion annually**\n2. **Duration**: Through 2025\n3. **Direction**: From developed nations to developing countries\n4. **Purpose**: Climate finance\n\n## Implementation Mechanism\n\n- Countries must submit **Nationally Determined Contributions (NDCs) every five years** with progressively more ambitious targets\n\n## Notable Finding\n\nThe 2023 global stocktake found these commitments **insufficient**, with current policies projected to result in **2.5°C of warming by 2100** rather than achieving the stated goals.",
+      "latency_ms": 2431.5,
+      "input_tokens": 177,
+      "output_tokens": 234,
+      "cost_usd": 0.0010776,
+      "scores": {
+        "coherence": {
+          "score": 0.85,
+          "explanation": "The response is well-structured and logically coherent, presenting emissions targets and financial commitments in clear categories with consistent formatting. However, it lacks explicit sourcing or acknowledgment of which specific document sections these details come from, and the 2023 stocktake reference, while contextually relevant, slightly extends beyond what a direct document description would typically include."
+        },
+        "relevance": {
+          "score": 0.8,
+          "explanation": "The response accurately identifies the main emissions targets (2°C, 1.5°C, net-zero) and financial commitment ($100 billion annually) from the Paris Agreement. It provides relevant implementation details about NDCs. However, it lacks specificity about the $100 billion commitment structure (e.g., it became a goal rather than a binding obligation, and details about post-2025 commitments) and doesn't mention other financial mechanisms described in the agreement."
+        },
+        "faithfulness": {
+          "score": 1.0,
+          "explanation": "Every claim in the response is directly supported by the context. The response accurately identifies all emissions targets (2°C, 1.5°C, net-zero in second half of century), financial commitments ($100 billion annually through 2025), the NDC mechanism (every five years, progressively ambitious), and the 2023 stocktake findings (insufficient pledges, 2.5°C projection)."
+        }
+      }
+    },
+    {
+      "prompt_id": "paris_targets",
+      "prompt": "What specific emissions targets and financial commitments does the document describe for the Paris Agreement?",
+      "context": "The Paris Agreement, adopted in 2015, sets a global goal to limit warming to well below 2°C\nabove pre-industrial levels, with efforts to limit the increase to 1.5°C. Countries must\nsubmit Nationally Determined Contributions (NDCs) every five years with progressively\nambitious targets. Developed nations committed to providing $100 billion annually in climate\nfinance to developing countries through 2025. Net-zero greenhouse gas emissions should be\nachieved in the second half of this century. The first global stocktake in 2023 found current\npledges insufficient, projecting 2.5°C of warming by 2100 under current policies.\n",
+      "runner_type": "claude",
+      "model": "claude-haiku-4-5-20251001",
+      "response": "# Emissions Targets and Financial Commitments in the Paris Agreement\n\n## Emissions Targets\n\nThe document describes the following emissions targets:\n\n- **Temperature goal**: Limit global warming to well below 2°C above pre-industrial levels, with efforts to limit it to 1.5°C\n- **Net-zero deadline**: Achieve net-zero greenhouse gas emissions in the second half of this century\n- **Current projection**: If current policies continue, warming is projected to reach 2.5°C by 2100 (as found in the 2023 global stocktake)\n\n## Financial Commitments\n\n- **Annual climate finance**: Developed nations committed to providing **$100 billion per year** to developing countries\n- **Duration**: This commitment extends through 2025\n\n## Additional Mechanism\n\n- **Nationally Determined Contributions (NDCs)**: Countries must submit these every five years with progressively more ambitious targets\n\nThe document notably emphasizes that current pledges are **insufficient** to meet the agreement's goals, as indicated by the 2023 global stocktake findings.",
+      "latency_ms": 2498.4,
+      "input_tokens": 177,
+      "output_tokens": 240,
+      "cost_usd": 0.0011016,
+      "scores": {
+        "coherence": {
+          "score": 0.75,
+          "explanation": "The response is mostly coherent and well-structured, presenting emissions targets and financial commitments in clear categories. However, it lacks internal consistency by claiming to describe \"specific\" targets from \"the document\" without clarifying that no actual document was provided, and the response conflates general Paris Agreement knowledge with what would be found in an unspecified document."
+        },
+        "relevance": {
+          "score": 0.75,
+          "explanation": "The response provides accurate information about the Paris Agreement's main emissions targets (2°C/1.5°C goal, net-zero timeline) and the key financial commitment ($100 billion annually), directly addressing the prompt. However, it lacks specificity about individual country commitments and targets, which would be found in actual NDCs, and doesn't clarify that the $100 billion figure was a collective goal rather than a fully realized commitment, limiting comprehensiveness."
+        },
+        "faithfulness": {
+          "score": 1.0,
+          "explanation": "Every claim in the response is directly supported by the context. The response accurately reports the temperature goals (well below 2°C, efforts toward 1.5°C), net-zero deadline (second half of century), financial commitment ($100 billion annually through 2025), NDC submission requirements (every five years with progressive ambition), and the 2023 global stocktake finding (projecting 2.5°C warming under current policies). No hallucinations or unsupported extrapolations are present."
+        }
+      }
+    },
+    {
+      "prompt_id": "paris_targets",
+      "prompt": "What specific emissions targets and financial commitments does the document describe for the Paris Agreement?",
+      "context": "The Paris Agreement, adopted in 2015, sets a global goal to limit warming to well below 2°C\nabove pre-industrial levels, with efforts to limit the increase to 1.5°C. Countries must\nsubmit Nationally Determined Contributions (NDCs) every five years with progressively\nambitious targets. Developed nations committed to providing $100 billion annually in climate\nfinance to developing countries through 2025. Net-zero greenhouse gas emissions should be\nachieved in the second half of this century. The first global stocktake in 2023 found current\npledges insufficient, projecting 2.5°C of warming by 2100 under current policies.\n",
+      "runner_type": "claude",
+      "model": "claude-sonnet-4-6",
+      "response": "## Paris Agreement: Emissions Targets and Financial Commitments\n\n### Emissions Targets\n- **Primary goal:** Limit warming to **well below 2°C** above pre-industrial levels\n- **Aspirational goal:** Further limit the increase to **1.5°C**\n- **Long-term target:** Achieve **net-zero greenhouse gas emissions** in the second half of this century\n- **NDC requirement:** Countries must submit progressively ambitious national targets **every five years**\n\n### Financial Commitments\n- Developed nations committed to providing **$100 billion annually** in climate finance to developing countries, running **through 2025**\n\n### Key Assessment Finding\n- The **2023 global stocktake** determined that current pledges are **insufficient**, with projections showing approximately **2.5°C of warming by 2100** under current policies — notably exceeding both stated targets\n\n---\n\n**Summary:** The Agreement establishes a tiered temperature framework with a firm ceiling below 2°C and a more ambitious 1.5°C goal, backed by a specific financial mechanism for developing nations, though the 2023 review highlights a significant gap between commitments and actual projected outcomes.",
+      "latency_ms": 5806.5,
+      "input_tokens": 177,
+      "output_tokens": 264,
+      "cost_usd": 0.004491,
+      "scores": {
+        "coherence": {
+          "score": 0.85,
+          "explanation": "The response is well-structured and logically coherent, with clear organization of emissions targets and financial commitments. The progression from specific goals to implementation mechanisms to assessment findings flows naturally. Minor issue: the response doesn't explicitly clarify whether all listed commitments appear in the document itself versus general Paris Agreement knowledge, which could create slight ambiguity about scope."
+        },
+        "relevance": {
+          "score": 0.85,
+          "explanation": "The response directly addresses the prompt by providing specific emissions targets (2°C, 1.5°C, net-zero by mid-century) and financial commitments ($100 billion annually through 2025) from the Paris Agreement. It includes relevant context about NDC requirements and the 2023 stocktake assessment, though it could have provided more detail on how these targets translate into specific country-level commitments or the mechanisms for tracking progress."
+        },
+        "faithfulness": {
+          "score": 1.0,
+          "explanation": "Every claim in the response is directly supported by the provided context. The response accurately captures all emissions targets (2°C, 1.5°C, net-zero in second half of century, NDC requirements), the specific financial commitment ($100 billion annually through 2025), and the 2023 stocktake findings (insufficient pledges, 2.5°C projection) without adding unsupported information."
+        }
+      }
+    },
+    {
+      "prompt_id": "paris_targets",
+      "prompt": "What specific emissions targets and financial commitments does the document describe for the Paris Agreement?",
+      "context": "The Paris Agreement, adopted in 2015, sets a global goal to limit warming to well below 2°C\nabove pre-industrial levels, with efforts to limit the increase to 1.5°C. Countries must\nsubmit Nationally Determined Contributions (NDCs) every five years with progressively\nambitious targets. Developed nations committed to providing $100 billion annually in climate\nfinance to developing countries through 2025. Net-zero greenhouse gas emissions should be\nachieved in the second half of this century. The first global stocktake in 2023 found current\npledges insufficient, projecting 2.5°C of warming by 2100 under current policies.\n",
+      "runner_type": "claude",
+      "model": "claude-sonnet-4-6",
+      "response": "## Paris Agreement: Emissions Targets and Financial Commitments\n\n### Emissions Targets\n- **Primary goal**: Limit warming to **well below 2°C** above pre-industrial levels\n- **Aspirational goal**: Pursue efforts to limit warming to **1.5°C**\n- **Long-term emissions goal**: Achieve **net-zero greenhouse gas emissions** in the second half of this century\n- **NDC requirement**: Countries must submit progressively ambitious targets **every five years**\n\n### Financial Commitments\n- Developed nations committed to providing **$100 billion annually** in climate finance\n- This funding is directed toward **developing countries**\n- The commitment runs **through 2025**\n\n### Current Status (from 2023 Stocktake)\n- Existing pledges were found to be **insufficient**\n- Current policies project **2.5°C of warming by 2100**, falling short of stated goals\n\n---\n\n**Key Takeaway**: The document highlights a significant **gap between commitments and outcomes**, as the 2023 global stocktake revealed that current pledges would result in warming nearly **1°C above** the agreement's most ambitious target, underscoring the need for stronger action.",
+      "latency_ms": 5907.8,
+      "input_tokens": 177,
+      "output_tokens": 273,
+      "cost_usd": 0.004626,
+      "scores": {
+        "coherence": {
+          "score": 0.85,
+          "explanation": "The response is well-structured and logically coherent, presenting emissions targets and financial commitments in a clear, organized manner with consistent messaging. The minor issue is that the final paragraph introduces a calculated gap (\"nearly 1°C above\" the 1.5°C target when projecting 2.5°C) that requires readers to do arithmetic and could be slightly clearer, but this doesn't significantly undermine overall coherence."
+        },
+        "relevance": {
+          "score": 0.85,
+          "explanation": "The response directly addresses the prompt by providing specific emissions targets (2°C, 1.5°C, net-zero) and financial commitments ($100 billion annually) from the Paris Agreement. However, it includes some interpretive context and current status information not explicitly requested, and lacks specificity on whether these are exact figures from the document being referenced."
+        },
+        "faithfulness": {
+          "score": 0.95,
+          "explanation": "The response accurately captures all major emissions targets and financial commitments from the context, including the 2°C/1.5°C goals, net-zero timeline, NDC requirements, $100 billion annual climate finance commitment through 2025, and the 2023 stocktake findings. The final statement about the gap being \"nearly 1°C above\" the 1.5°C target (2.5°C - 1.5°C = 1.0°C) is a minor arithmetic extrapolation but is mathematically accurate and reasonably grounded in the provided data."
+        }
+      }
+    },
+    {
+      "prompt_id": "paris_targets",
+      "prompt": "What specific emissions targets and financial commitments does the document describe for the Paris Agreement?",
+      "context": "The Paris Agreement, adopted in 2015, sets a global goal to limit warming to well below 2°C\nabove pre-industrial levels, with efforts to limit the increase to 1.5°C. Countries must\nsubmit Nationally Determined Contributions (NDCs) every five years with progressively\nambitious targets. Developed nations committed to providing $100 billion annually in climate\nfinance to developing countries through 2025. Net-zero greenhouse gas emissions should be\nachieved in the second half of this century. The first global stocktake in 2023 found current\npledges insufficient, projecting 2.5°C of warming by 2100 under current policies.\n",
+      "runner_type": "claude",
+      "model": "claude-sonnet-4-6",
+      "response": "## Paris Agreement: Emissions Targets and Financial Commitments\n\n### Emissions Targets\n- **Primary goal**: Limit warming to **well below 2°C** above pre-industrial levels\n- **Aspirational goal**: Further limit the increase to **1.5°C**\n- **Long-term target**: Achieve **net-zero greenhouse gas emissions** in the second half of this century\n- Countries must submit **Nationally Determined Contributions (NDCs) every five years**, with progressively more ambitious targets\n\n### Financial Commitments\n- Developed nations committed to providing **$100 billion annually** in climate finance to developing countries, through **2025**\n\n### Notable Gap Highlighted\n- The **2023 global stocktake** found that current pledges are **insufficient**, with projections showing approximately **2.5°C of warming by 2100** under current policies — exceeding both stated targets\n\n---\n\n**In summary**, the document outlines both a tiered temperature target system and a specific financial obligation from developed nations, while also noting that existing commitments fall short of achieving the agreement's core objectives.",
+      "latency_ms": 5268.5,
+      "input_tokens": 177,
+      "output_tokens": 247,
+      "cost_usd": 0.004236,
+      "scores": {
+        "coherence": {
+          "score": 0.85,
+          "explanation": "The response is well-structured and internally consistent, clearly presenting emissions targets and financial commitments with logical flow. However, there is a minor coherence issue: the response references 'the document' but doesn't specify which document was actually provided, creating slight ambiguity about whether these are standard Paris Agreement facts or from a specific source document."
+        },
+        "relevance": {
+          "score": 0.85,
+          "explanation": "The response directly addresses the prompt by identifying specific emissions targets (2°C, 1.5°C, net-zero by mid-century) and financial commitments ($100 billion annually) from the Paris Agreement. It includes relevant implementation details like NDCs and acknowledges a limitation (the 2023 stocktake gap), though it doesn't cite specific document passages or provide additional financial commitment details that may exist in the original agreement."
+        },
+        "faithfulness": {
+          "score": 1.0,
+          "explanation": "All claims in the response are directly supported by the provided context. The response accurately cites the 2°C and 1.5°C targets, net-zero emissions goal, NDC submission requirements, $100 billion annual climate finance commitment through 2025, and the 2023 stocktake finding of insufficient pledges with 2.5°C warming projection."
+        }
+      }
+    }
+  ],
+  "summary": {
+    "claude-haiku-4-5-20251001": {
+      "model": "claude-haiku-4-5-20251001",
+      "runner_type": "claude",
+      "avg_latency_ms": 2353.6,
+      "total_cost_usd": 0.0090512,
+      "metrics": {
+        "coherence": {
+          "mean_score": 0.8656,
+          "win_rate": 0.0
+        },
+        "relevance": {
+          "mean_score": 0.4444,
+          "win_rate": 0.0
+        },
+        "faithfulness": {
+          "mean_score": 0.9944,
+          "win_rate": 0.0
+        }
+      }
+    },
+    "claude-sonnet-4-6": {
+      "model": "claude-sonnet-4-6",
+      "runner_type": "claude",
+      "avg_latency_ms": 5056.2,
+      "total_cost_usd": 0.037287,
+      "metrics": {
+        "coherence": {
+          "mean_score": 0.88,
+          "win_rate": 0.6667
+        },
+        "relevance": {
+          "mean_score": 0.5667,
+          "win_rate": 0.6667
+        },
+        "faithfulness": {
+          "mean_score": 0.9889,
+          "win_rate": 0.3333
+        }
+      }
+    }
+  },
+  "evaluator_versions": {
+    "coherence": {
+      "name": "coherence",
+      "prompt_version": "v1"
+    },
+    "relevance": {
+      "name": "relevance",
+      "prompt_version": "v1"
+    },
+    "faithfulness": {
+      "name": "faithfulness",
+      "prompt_version": "v1"
+    }
+  },
+  "repeat": 3,
+  "aggregated_results": [
+    {
+      "prompt_id": "solar_efficiency",
+      "prompt": "Based on the document, what efficiency improvements have solar panels achieved in recent years?",
+      "context": "Recent advances in photovoltaic technology have pushed commercial solar panel efficiency\nfrom around 15% in 2010 to over 23% in 2024. Multi-junction cells used in space applications\nnow exceed 47% efficiency under concentrated light. Perovskite-silicon tandem cells reached\n33.9% in laboratory conditions in 2024, setting a new record. Key drivers include improved\nlight trapping, better anti-reflective coatings, and reduced carrier recombination losses.\n",
+      "runner_type": "claude",
+      "model": "claude-haiku-4-5-20251001",
+      "n_runs": 3,
+      "avg_latency_ms": 2311.4,
+      "avg_cost_usd": 0.00085307,
+      "total_cost_usd": 0.0025592,
+      "scores": {
+        "coherence": {
+          "mean": 0.85,
+          "std": 0.0,
+          "ci_lower": 0.85,
+          "ci_upper": 0.85,
+          "n": 3
+        },
+        "relevance": {
+          "mean": 0.0,
+          "std": 0.0,
+          "ci_lower": 0.0,
+          "ci_upper": 0.0,
+          "n": 3
+        },
+        "faithfulness": {
+          "mean": 1.0,
+          "std": 0.0,
+          "ci_lower": 1.0,
+          "ci_upper": 1.0,
+          "n": 3
+        }
+      }
+    },
+    {
+      "prompt_id": "solar_efficiency",
+      "prompt": "Based on the document, what efficiency improvements have solar panels achieved in recent years?",
+      "context": "Recent advances in photovoltaic technology have pushed commercial solar panel efficiency\nfrom around 15% in 2010 to over 23% in 2024. Multi-junction cells used in space applications\nnow exceed 47% efficiency under concentrated light. Perovskite-silicon tandem cells reached\n33.9% in laboratory conditions in 2024, setting a new record. Key drivers include improved\nlight trapping, better anti-reflective coatings, and reduced carrier recombination losses.\n",
+      "runner_type": "claude",
+      "model": "claude-sonnet-4-6",
+      "n_runs": 3,
+      "avg_latency_ms": 4682.8,
+      "avg_cost_usd": 0.003659,
+      "total_cost_usd": 0.010977,
+      "scores": {
+        "coherence": {
+          "mean": 0.85,
+          "std": 0.0,
+          "ci_lower": 0.85,
+          "ci_upper": 0.85,
+          "n": 3
+        },
+        "relevance": {
+          "mean": 0.0,
+          "std": 0.0,
+          "ci_lower": 0.0,
+          "ci_upper": 0.0,
+          "n": 3
+        },
+        "faithfulness": {
+          "mean": 1.0,
+          "std": 0.0,
+          "ci_lower": 1.0,
+          "ci_upper": 1.0,
+          "n": 3
+        }
+      }
+    },
+    {
+      "prompt_id": "transformer_attention",
+      "prompt": "According to the document, how does the self-attention mechanism work in transformers?",
+      "context": "Self-attention allows each token in a sequence to attend to every other token. For each\nposition, three vectors are computed from the input embedding: a Query (Q), a Key (K), and\na Value (V). Attention scores are calculated as the dot product of Q with all K vectors,\nscaled by the square root of the key dimension to prevent gradient vanishing. A softmax is\napplied to produce weights that sum to 1, which are then used to compute a weighted sum of\nthe V vectors. Multi-head attention runs this process in parallel with different learned\nprojections, allowing the model to attend to different representation subspaces simultaneously.\n",
+      "runner_type": "claude",
+      "model": "claude-haiku-4-5-20251001",
+      "n_runs": 3,
+      "avg_latency_ms": 2454.8,
+      "avg_cost_usd": 0.00111573,
+      "total_cost_usd": 0.0033472,
+      "scores": {
+        "coherence": {
+          "mean": 0.93,
+          "std": 0.0173,
+          "ci_lower": 0.92,
+          "ci_upper": 0.95,
+          "n": 3
+        },
+        "relevance": {
+          "mean": 0.5667,
+          "std": 0.1155,
+          "ci_lower": 0.5,
+          "ci_upper": 0.7,
+          "n": 3
+        },
+        "faithfulness": {
+          "mean": 0.9833,
+          "std": 0.0289,
+          "ci_lower": 0.95,
+          "ci_upper": 1.0,
+          "n": 3
+        }
+      }
+    },
+    {
+      "prompt_id": "transformer_attention",
+      "prompt": "According to the document, how does the self-attention mechanism work in transformers?",
+      "context": "Self-attention allows each token in a sequence to attend to every other token. For each\nposition, three vectors are computed from the input embedding: a Query (Q), a Key (K), and\na Value (V). Attention scores are calculated as the dot product of Q with all K vectors,\nscaled by the square root of the key dimension to prevent gradient vanishing. A softmax is\napplied to produce weights that sum to 1, which are then used to compute a weighted sum of\nthe V vectors. Multi-head attention runs this process in parallel with different learned\nprojections, allowing the model to attend to different representation subspaces simultaneously.\n",
+      "runner_type": "claude",
+      "model": "claude-sonnet-4-6",
+      "n_runs": 3,
+      "avg_latency_ms": 4824.9,
+      "avg_cost_usd": 0.004319,
+      "total_cost_usd": 0.012957,
+      "scores": {
+        "coherence": {
+          "mean": 0.94,
+          "std": 0.0173,
+          "ci_lower": 0.92,
+          "ci_upper": 0.95,
+          "n": 3
+        },
+        "relevance": {
+          "mean": 0.85,
+          "std": 0.0,
+          "ci_lower": 0.85,
+          "ci_upper": 0.85,
+          "n": 3
+        },
+        "faithfulness": {
+          "mean": 0.9833,
+          "std": 0.0289,
+          "ci_lower": 0.95,
+          "ci_upper": 1.0,
+          "n": 3
+        }
+      }
+    },
+    {
+      "prompt_id": "paris_targets",
+      "prompt": "What specific emissions targets and financial commitments does the document describe for the Paris Agreement?",
+      "context": "The Paris Agreement, adopted in 2015, sets a global goal to limit warming to well below 2°C\nabove pre-industrial levels, with efforts to limit the increase to 1.5°C. Countries must\nsubmit Nationally Determined Contributions (NDCs) every five years with progressively\nambitious targets. Developed nations committed to providing $100 billion annually in climate\nfinance to developing countries through 2025. Net-zero greenhouse gas emissions should be\nachieved in the second half of this century. The first global stocktake in 2023 found current\npledges insufficient, projecting 2.5°C of warming by 2100 under current policies.\n",
+      "runner_type": "claude",
+      "model": "claude-haiku-4-5-20251001",
+      "n_runs": 3,
+      "avg_latency_ms": 2294.8,
+      "avg_cost_usd": 0.00104827,
+      "total_cost_usd": 0.0031448,
+      "scores": {
+        "coherence": {
+          "mean": 0.8167,
+          "std": 0.0577,
+          "ci_lower": 0.75,
+          "ci_upper": 0.85,
+          "n": 3
+        },
+        "relevance": {
+          "mean": 0.7667,
+          "std": 0.0289,
+          "ci_lower": 0.75,
+          "ci_upper": 0.8,
+          "n": 3
+        },
+        "faithfulness": {
+          "mean": 1.0,
+          "std": 0.0,
+          "ci_lower": 1.0,
+          "ci_upper": 1.0,
+          "n": 3
+        }
+      }
+    },
+    {
+      "prompt_id": "paris_targets",
+      "prompt": "What specific emissions targets and financial commitments does the document describe for the Paris Agreement?",
+      "context": "The Paris Agreement, adopted in 2015, sets a global goal to limit warming to well below 2°C\nabove pre-industrial levels, with efforts to limit the increase to 1.5°C. Countries must\nsubmit Nationally Determined Contributions (NDCs) every five years with progressively\nambitious targets. Developed nations committed to providing $100 billion annually in climate\nfinance to developing countries through 2025. Net-zero greenhouse gas emissions should be\nachieved in the second half of this century. The first global stocktake in 2023 found current\npledges insufficient, projecting 2.5°C of warming by 2100 under current policies.\n",
+      "runner_type": "claude",
+      "model": "claude-sonnet-4-6",
+      "n_runs": 3,
+      "avg_latency_ms": 5660.9,
+      "avg_cost_usd": 0.004451,
+      "total_cost_usd": 0.013353,
+      "scores": {
+        "coherence": {
+          "mean": 0.85,
+          "std": 0.0,
+          "ci_lower": 0.85,
+          "ci_upper": 0.85,
+          "n": 3
+        },
+        "relevance": {
+          "mean": 0.85,
+          "std": 0.0,
+          "ci_lower": 0.85,
+          "ci_upper": 0.85,
+          "n": 3
+        },
+        "faithfulness": {
+          "mean": 0.9833,
+          "std": 0.0289,
+          "ci_lower": 0.95,
+          "ci_upper": 1.0,
+          "n": 3
+        }
+      }
+    }
+  ],
+  "statistical_note": null
+}

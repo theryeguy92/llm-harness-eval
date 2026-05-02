@@ -1,5 +1,6 @@
 """CLI entrypoint for running LLM evaluations."""
 import asyncio
+import csv
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -9,11 +10,17 @@ import numpy as np
 import typer
 import yaml
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from rich.console import Console
 from rich.table import Table
 
-from evaluators import CoherenceEvaluator, FaithfulnessEvaluator, RelevanceEvaluator
+from evaluators import (
+    CoherenceEvaluator,
+    ExactMatchEvaluator,
+    FaithfulnessEvaluator,
+    RelevanceEvaluator,
+    RougeEvaluator,
+)
 from evaluators.base import BaseEvaluator, EvalResult
 from runners import ClaudeRunner, GeminiRunner, OpenAIRunner
 from runners.base import BaseRunner, RunResult
@@ -35,6 +42,10 @@ class PromptConfig(BaseModel):
     id: str = Field(..., description="Unique identifier for this prompt")
     text: str = Field(..., description="The prompt text to send to the model")
     context: str | None = Field(None, description="Optional reference text for RAG evals")
+    expected_output: str | None = Field(
+        None,
+        description="Ground-truth answer for reference-based evaluators (rouge_l, exact_match).",
+    )
 
 
 class RunnerConfig(BaseModel):
@@ -50,10 +61,83 @@ class EvalConfig(BaseModel):
     """Top-level evaluation configuration loaded from a YAML file."""
 
     name: str = Field(..., description="Human-readable name for this evaluation run")
-    prompts: list[PromptConfig] = Field(..., description="Prompts to evaluate")
+    prompts: list[PromptConfig] = Field(
+        default_factory=list,
+        description="Inline prompts to evaluate. Ignored when 'dataset' is set.",
+    )
+    dataset: str | None = Field(
+        None,
+        description=(
+            "Path to a JSONL or CSV dataset file with columns: "
+            "id, input, context (optional), expected_output (optional). "
+            "When present, replaces the inline 'prompts' list."
+        ),
+    )
     runners: list[RunnerConfig] = Field(..., description="Models to run prompts through")
     evaluators: list[str] = Field(..., description="Evaluator names to apply to each response")
     output_dir: str = Field("reports/", description="Directory for JSON and markdown output")
+
+    @model_validator(mode="after")
+    def _require_prompts_or_dataset(self) -> "EvalConfig":
+        if not self.prompts and not self.dataset:
+            raise ValueError("Provide either 'prompts' (inline list) or 'dataset' (path to JSONL/CSV).")
+        return self
+
+
+# ---------------------------------------------------------------------------
+# Dataset loader
+# ---------------------------------------------------------------------------
+
+
+def load_dataset(path: str, config_dir: Path | None = None) -> list[PromptConfig]:
+    """Load prompts from a JSONL or CSV dataset file.
+
+    The file must have the columns/keys ``id`` and ``input``.  The optional
+    columns ``context`` and ``expected_output`` are passed through as-is.
+
+    Args:
+        path: Absolute path, or a path relative to ``config_dir``.
+        config_dir: Directory of the YAML config file; used to resolve
+            relative paths.  Defaults to the current working directory.
+
+    Returns:
+        List of PromptConfig objects ready for evaluation.
+
+    Raises:
+        FileNotFoundError: If the dataset file does not exist.
+        ValueError: If the file extension is not ``.jsonl`` or ``.csv``,
+            or if required columns are missing.
+    """
+    resolved = Path(path)
+    if not resolved.is_absolute() and config_dir is not None:
+        resolved = config_dir / resolved
+    resolved = resolved.resolve()
+
+    if not resolved.exists():
+        raise FileNotFoundError(f"Dataset file not found: {resolved}")
+
+    suffix = resolved.suffix.lower()
+    if suffix == ".jsonl":
+        rows = [json.loads(line) for line in resolved.read_text().splitlines() if line.strip()]
+    elif suffix == ".csv":
+        with resolved.open(newline="", encoding="utf-8") as fh:
+            rows = list(csv.DictReader(fh))
+    else:
+        raise ValueError(f"Unsupported dataset format: {suffix!r}. Use .jsonl or .csv.")
+
+    prompts: list[PromptConfig] = []
+    for i, row in enumerate(rows):
+        if "id" not in row or "input" not in row:
+            raise ValueError(f"Row {i} is missing required column(s) 'id' and/or 'input': {row}")
+        prompts.append(
+            PromptConfig(
+                id=str(row["id"]),
+                text=str(row["input"]),
+                context=row.get("context") or None,
+                expected_output=row.get("expected_output") or None,
+            )
+        )
+    return prompts
 
 
 # ---------------------------------------------------------------------------
@@ -146,8 +230,10 @@ class EvalReport(BaseModel):
 
 _EVALUATOR_MAP: dict[str, type[BaseEvaluator]] = {
     "coherence": CoherenceEvaluator,
+    "exact_match": ExactMatchEvaluator,
     "faithfulness": FaithfulnessEvaluator,
     "relevance": RelevanceEvaluator,
+    "rouge_l": RougeEvaluator,
 }
 
 
@@ -190,9 +276,12 @@ async def _evaluate_one(
         full_prompt = prompt_cfg.text
     run: RunResult = await runner.run(full_prompt)
 
+    # Reference-based evaluators (rouge_l, exact_match) read their reference from
+    # expected_output when available; fall back to context so RAG-only configs still work.
+    eval_context = prompt_cfg.expected_output or prompt_cfg.context
     eval_names = list(evaluators.keys())
     eval_results = await asyncio.gather(
-        *[ev.score(prompt_cfg.text, run.response, prompt_cfg.context) for ev in evaluators.values()]
+        *[ev.score(prompt_cfg.text, run.response, eval_context) for ev in evaluators.values()]
     )
     scores: dict[str, EvalResult] = dict(zip(eval_names, eval_results))
 
@@ -559,6 +648,9 @@ def main(
     """
     raw = yaml.safe_load(config.read_text())
     eval_cfg = EvalConfig.model_validate(raw)
+
+    if eval_cfg.dataset:
+        eval_cfg.prompts = load_dataset(eval_cfg.dataset, config_dir=config.parent)
 
     if output_dir is not None:
         eval_cfg.output_dir = str(output_dir)

@@ -1,5 +1,7 @@
 # llm-eval-harness
 
+[![CI](https://github.com/theryeguy92/llm-harness-eval/actions/workflows/test.yml/badge.svg)](https://github.com/theryeguy92/llm-harness-eval/actions/workflows/test.yml)
+
 Most LLM failures aren't model failures — they're evaluation failures. Without a systematic way to measure coherence, faithfulness, and relevance, prompt changes and model upgrades are guesswork. This framework gives you a reproducible eval loop: define prompts and context in YAML, run them through any combination of models in parallel, and get back structured scores from an LLM-as-judge. It's built for RAG quality measurement, A/B testing prompts or models, and latency benchmarking — the three things you need before you can ship a retrieval system with confidence.
 
 ## Quick Start
@@ -78,6 +80,12 @@ This is not yet implemented. The JSON output stores all raw responses, so the da
 Each evaluator class carries a `PROMPT_VERSION` constant (currently `"v1"` for all three). This value is recorded in every JSON report under `evaluator_versions`.
 
 The reason: changing the judge system prompt — even a small wording change — can shift scores by 0.1–0.2. Without version tracking, you cannot tell whether a score change between two runs reflects a better model or a different evaluator. The convention is to bump `PROMPT_VERSION` to `"v2"` whenever the system prompt changes, and to re-run historical baselines before comparing across versions.
+
+## Reference-Based vs LLM-as-Judge Evaluators
+
+Use reference-based evaluators (`rouge_l`, `exact_match`) when a ground-truth answer exists and correctness is objective — extraction tasks, closed-form QA, structured outputs; use LLM-as-judge evaluators (`coherence`, `relevance`, `faithfulness`) when acceptable answers are open-ended or when measuring qualities like tone, reasoning quality, or explanatory depth that no single reference string can capture.
+
+For reference-based evaluators, pass the expected answer as the `context` field in your prompt config (or `expected_output` column when loading from a dataset).
 
 ## Pairwise vs Pointwise Evaluation
 
