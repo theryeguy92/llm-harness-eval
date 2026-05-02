@@ -1,0 +1,50 @@
+name: rag_comparison
+output_dir: reports/
+
+# Compares claude-3-5-haiku (Anthropic) vs gemini-1.5-flash (Google) on 3 RAG tasks.
+
+prompts:
+  - id: solar_efficiency
+    text: "Based on the document, what efficiency improvements have solar panels achieved in recent years?"
+    context: |
+      Recent advances in photovoltaic technology have pushed commercial solar panel efficiency
+      from around 15% in 2010 to over 23% in 2024. Multi-junction cells used in space applications
+      now exceed 47% efficiency under concentrated light. Perovskite-silicon tandem cells reached
+      33.9% in laboratory conditions in 2024, setting a new record. Key drivers include improved
+      light trapping, better anti-reflective coatings, and reduced carrier recombination losses.
+
+  - id: transformer_attention
+    text: "According to the document, how does the self-attention mechanism work in transformers?"
+    context: |
+      Self-attention allows each token in a sequence to attend to every other token. For each
+      position, three vectors are computed from the input embedding: a Query (Q), a Key (K), and
+      a Value (V). Attention scores are calculated as the dot product of Q with all K vectors,
+      scaled by the square root of the key dimension to prevent gradient vanishing. A softmax is
+      applied to produce weights that sum to 1, which are then used to compute a weighted sum of
+      the V vectors. Multi-head attention runs this process in parallel with different learned
+      projections, allowing the model to attend to different representation subspaces simultaneously.
+
+  - id: paris_targets
+    text: "What specific emissions targets and financial commitments does the document describe for the Paris Agreement?"
+    context: |
+      The Paris Agreement, adopted in 2015, sets a global goal to limit warming to well below 2°C
+      above pre-industrial levels, with efforts to limit the increase to 1.5°C. Countries must
+      submit Nationally Determined Contributions (NDCs) every five years with progressively
+      ambitious targets. Developed nations committed to providing $100 billion annually in climate
+      finance to developing countries through 2025. Net-zero greenhouse gas emissions should be
+      achieved in the second half of this century. The first global stocktake in 2023 found current
+      pledges insufficient, projecting 2.5°C of warming by 2100 under current policies.
+
+runners:
+  - type: claude
+    model: claude-haiku-4-5-20251001
+    max_tokens: 512
+
+  - type: gemini
+    model: gemini-flash-latest
+    max_tokens: 512
+
+evaluators:
+  - coherence
+  - relevance
+  - faithfulness
