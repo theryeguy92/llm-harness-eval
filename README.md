@@ -2,7 +2,15 @@
 
 [![CI](https://github.com/theryeguy92/llm-harness-eval/actions/workflows/test.yml/badge.svg)](https://github.com/theryeguy92/llm-harness-eval/actions/workflows/test.yml)
 
-Most LLM failures aren't model failures — they're evaluation failures. Without a systematic way to measure coherence, faithfulness, and relevance, prompt changes and model upgrades are guesswork. This framework gives you a reproducible eval loop: define prompts and context in YAML, run them through any combination of models in parallel, and get back structured scores from an LLM-as-judge. It's built for RAG quality measurement, A/B testing prompts or models, and latency benchmarking — the three things you need before you can ship a retrieval system with confidence.
+Most LLM failures aren't model failures — they're evaluation failures. Without a systematic way to measure coherence, faithfulness, and relevance, prompt changes and model upgrades are guesswork. This framework gives you a reproducible eval loop: define prompts in YAML or load them from a dataset file, run them through any combination of models in parallel, and get back structured scores. It's built for RAG quality measurement, A/B testing prompts or models, and latency benchmarking.
+
+**What's included:**
+- **5 evaluators:** `coherence`, `relevance`, `faithfulness` (LLM-as-judge via Claude) · `rouge_l`, `exact_match` (reference-based, no API calls)
+- **3 runners:** Claude, OpenAI, Gemini — plus any OpenAI-compatible endpoint (Ollama, vLLM)
+- **Dataset loader:** feed a `.jsonl` or `.csv` file instead of inline YAML prompts; columns `id`, `input`, `context`, `expected_output`
+- **Bootstrap confidence intervals:** `--repeat N` runs each prompt N times and reports mean ± std with 95% CIs
+- **Pairwise evaluation:** head-to-head comparison with documented position-swap debiasing
+- **Cost tracking:** per-call USD estimates with a per-provider pricing table covering all supported models
 
 ## Quick Start
 
@@ -13,38 +21,59 @@ cp .env.example .env
 # Set ANTHROPIC_API_KEY (required — used by runners and evaluators)
 # Set GOOGLE_API_KEY or OPENAI_API_KEY for those runners
 
+# Run with inline YAML prompts
 python run_eval.py --config examples/basic.yaml
 # → prints a score table and writes reports/<name>_<timestamp>.{json,md}
+
+# Run with a dataset file (JSONL or CSV)
+python run_eval.py --config examples/basic.yaml --repeat 3
+# examples/sample_dataset.jsonl shows the expected format:
+#   {"id": "q1", "input": "...", "context": "...", "expected_output": "..."}
 ```
 
-## Benchmark: Claude Haiku vs Gemini Flash
+To use the dataset loader, replace the `prompts:` block in your config with:
 
-3 RAG prompts, each model scored on coherence, relevance, and faithfulness by a Claude-as-judge. Run with `examples/basic.yaml`.
+```yaml
+dataset: examples/sample_dataset.jsonl   # path relative to the config file
+```
 
-_Generated: 2026-05-02_
+## Benchmark: Claude Haiku vs Sonnet (`--repeat 3`)
 
-| Prompt | Model | Latency (ms) | Tokens | Coherence | Relevance | Faithfulness |
+3 RAG prompts, each model scored on coherence, relevance, and faithfulness by a Claude Haiku judge. Each prompt was run 3 times; scores show mean ± std with 95% bootstrap confidence intervals. Full output in [`examples/sample_output/rag_comparison_haiku_vs_sonnet.md`](examples/sample_output/rag_comparison_haiku_vs_sonnet.md).
+
+_Generated: 2026-05-02 · n=3 runs per prompt_
+
+| Model | Avg Latency (ms) | Total Cost | Coherence (mean / win%) | Relevance (mean / win%) | Faithfulness (mean / win%) |
+| --- | --- | --- | --- | --- | --- |
+| claude-haiku-4-5-20251001 | 2,354 | $0.009051 | 0.87 / 0% | 0.44 / 0% | 0.99 / 0% |
+| claude-sonnet-4-6 | 5,056 | $0.037287 | 0.88 / 67% | 0.57 / 67% | 0.99 / 33% |
+
+**Per-prompt breakdown** (mean ± std [95% CI]):
+
+| Prompt | Model | Latency (ms) | Cost | Coherence | Relevance | Faithfulness |
 | --- | --- | --- | --- | --- | --- | --- |
-| Solar panel efficiency improvements | claude-haiku-4-5-20251001 | 2474 | 361 | 0.85 | 0.00 | 0.95 |
-| Solar panel efficiency improvements | gemini-flash-latest | 3142 | 239 | 0.85 | 0.00 | 1.00 |
-| Self-attention in transformers | claude-haiku-4-5-20251001 | 1821 | 387 | 0.90 | 0.85 | 1.00 |
-| Self-attention in transformers | gemini-flash-latest | 3530 | 173 | 0.30 | 0.50 | 1.00 |
-| Paris Agreement targets | claude-haiku-4-5-20251001 | 1849 | 389 | 0.85 | 0.85 | 1.00 |
-| Paris Agreement targets | gemini-flash-latest | 2794 | 229 | 0.60 | 0.30 | 0.85 |
+| Solar panel efficiency | haiku-4-5 | 2,311 | $0.000853 | 0.85 ± 0.00 [0.85–0.85] | 0.00 ± 0.00 [0.00–0.00] | 1.00 ± 0.00 [1.00–1.00] |
+| Solar panel efficiency | sonnet-4-6 | 4,683 | $0.003659 | 0.85 ± 0.00 [0.85–0.85] | 0.00 ± 0.00 [0.00–0.00] | 1.00 ± 0.00 [1.00–1.00] |
+| Self-attention mechanism | haiku-4-5 | 2,455 | $0.001116 | 0.93 ± 0.02 [0.92–0.95] | 0.57 ± 0.12 [0.50–0.70] | 0.98 ± 0.03 [0.95–1.00] |
+| Self-attention mechanism | sonnet-4-6 | 4,825 | $0.004319 | 0.94 ± 0.02 [0.92–0.95] | 0.85 ± 0.00 [0.85–0.85] | 0.98 ± 0.03 [0.95–1.00] |
+| Paris Agreement targets | haiku-4-5 | 2,295 | $0.001048 | 0.82 ± 0.06 [0.75–0.85] | 0.77 ± 0.03 [0.75–0.80] | 1.00 ± 0.00 [1.00–1.00] |
+| Paris Agreement targets | sonnet-4-6 | 5,661 | $0.004451 | 0.85 ± 0.00 [0.85–0.85] | 0.85 ± 0.00 [0.85–0.85] | 0.98 ± 0.03 [0.95–1.00] |
 
-Claude Haiku is faster and more consistent; Gemini Flash matches or exceeds faithfulness scores at lower token counts but shows higher variance in coherence.
+Haiku is 2.1× faster and 4.1× cheaper per run. Sonnet wins on relevance across most prompts (67% win rate) with noticeably higher scores on the transformer and Paris Agreement tasks. Faithfulness is near-identical for both, which makes sense — it has the tightest objective anchor. The zero relevance scores on the solar prompt appear on both models, indicating a judge calibration issue for that particular phrasing rather than a model failure.
 
 ## How Evaluation Works
 
 Each evaluator sends the prompt, the model's response, and (for RAG evals) the reference context to a Claude judge model. The judge returns a float score in `[0.0, 1.0]` with a one-sentence explanation. All scores for a given (prompt × model) pair are gathered concurrently.
 
-| Evaluator | What it measures | Needs context? |
-|-----------|-----------------|----------------|
-| `coherence` | Internal logical consistency — ideas flow without contradictions | No |
-| `relevance` | Whether the response directly answers what was asked | No |
-| `faithfulness` | Whether every claim is grounded in the retrieved context — catches hallucination | Yes |
+| Evaluator | What it measures | API call? | Needs reference? |
+|-----------|-----------------|-----------|-----------------|
+| `coherence` | Internal logical consistency — ideas flow without contradictions | Yes (judge) | No |
+| `relevance` | Whether the response directly answers what was asked | Yes (judge) | No |
+| `faithfulness` | Whether every claim is grounded in the retrieved context — catches hallucination | Yes (judge) | `context` |
+| `rouge_l` | ROUGE-L F1 against an expected output — purely lexical, no judge | No | `expected_output` |
+| `exact_match` | Case-insensitive exact string equality — useful for classification and extraction | No | `expected_output` |
 
-The LLM-as-judge pattern scales to arbitrary criteria without labeled data, making it practical for teams that can't run human evals on every prompt change. The tradeoff: judge scores inherit the judge model's biases, so treat them as a signal rather than ground truth.
+The LLM-as-judge pattern scales to arbitrary criteria without labeled data, making it practical for teams that can't run human evals on every prompt change. The tradeoff: judge scores inherit the judge model's biases, so treat them as a signal rather than ground truth. Use `rouge_l` and `exact_match` when a correct reference answer exists and correctness is unambiguous.
 
 ## Evaluator Methodology & Known Limitations
 
@@ -60,7 +89,7 @@ Evaluations for each (prompt × model) pair run concurrently via `asyncio.gather
 
 **Positional bias.** In pairwise-comparison setups, LLM judges favor whichever response appears first. This framework evaluates each response independently rather than side-by-side, which avoids the most direct form. A residual form can still appear if content placement in the judge prompt influences what the model attends to.
 
-**Self-preference.** Claude judges tend to favor Claude-style outputs — responses that are structured, hedged, and formatted the way Claude writes. The benchmark table above compares Claude Haiku against Gemini Flash using Claude as the judge, which likely inflates Claude's coherence and relevance scores. This is the strongest caveat on those numbers.
+**Self-preference.** Claude judges tend to favor Claude-style outputs — responses that are structured, hedged, and formatted the way Claude writes. This bias is less pronounced when comparing two Claude models (as in the benchmark above), but matters most when comparing Claude against non-Claude models like Gemini or GPT-4.
 
 ### What this means when reading scores
 
@@ -113,6 +142,8 @@ result = await ev.compare(
 
 ## Config Format
 
+**Option A — inline prompts:**
+
 ```yaml
 name: my_eval
 output_dir: reports/
@@ -122,6 +153,7 @@ prompts:
     text: "According to the document, what does X say about Y?"
     context: |
       <your retrieved passage here>
+    expected_output: "The expected answer for ROUGE/exact-match scoring"
 
 runners:
   - type: claude
@@ -138,6 +170,31 @@ evaluators:
   - coherence
   - relevance
   - faithfulness
+  - rouge_l
+  - exact_match
+```
+
+**Option B — dataset file** (replaces the `prompts:` block):
+
+```yaml
+name: my_eval
+dataset: examples/sample_dataset.jsonl   # path relative to this config file
+
+runners:
+  - type: claude
+    model: claude-sonnet-4-6
+    max_tokens: 1024
+
+evaluators:
+  - rouge_l
+  - exact_match
+```
+
+Dataset format (JSONL — one JSON object per line, or CSV with the same column names):
+
+```jsonl
+{"id": "q1", "input": "What is the capital of France?", "expected_output": "Paris"}
+{"id": "q2", "input": "Summarise the document.", "context": "<passage>", "expected_output": "<reference summary>"}
 ```
 
 Each run is fully reproducible from its YAML. Reports include all raw responses and per-evaluator explanations in the JSON output.
@@ -177,11 +234,14 @@ The harness handles concurrency, report writing, and CLI wiring — the runner o
 ## Project Structure
 
 ```
-evaluators/   # Coherence, faithfulness, relevance — each scores one dimension
-runners/      # Claude, Gemini, OpenAI wrappers — uniform async interface
-reports/      # JSON (full data) + markdown (table) output per run
-examples/     # Worked YAML configs with real outputs
-run_eval.py   # CLI: --config to run, --output-dir to override report path
+evaluators/            # Coherence, faithfulness, relevance (LLM-as-judge) · rouge_l, exact_match (reference-based)
+runners/               # Claude, Gemini, OpenAI wrappers — uniform async interface, with retry + cost tracking
+reports/               # JSON (full data) + markdown (table) output per run
+examples/              # Worked YAML configs and sample dataset
+  basic.yaml           #   inline-prompt config: Haiku vs Gemini Flash
+  sample_dataset.jsonl #   dataset-loader example: id/input/context/expected_output
+  sample_output/       #   real eval output committed for reviewer inspection
+run_eval.py            # CLI: --config, --output-dir, --repeat N
 ```
 
 ## Environment Variables
