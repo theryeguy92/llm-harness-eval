@@ -76,6 +76,23 @@ class ResultRow(BaseModel):
     scores: dict[str, EvalResult]
 
 
+class MetricSummary(BaseModel):
+    """Aggregate statistics for one metric across all prompts for one model."""
+
+    mean_score: float
+    win_rate: float  # fraction of prompts where this model strictly outscored all others
+
+
+class ModelSummary(BaseModel):
+    """Per-model aggregate statistics for one evaluation run."""
+
+    model: str
+    runner_type: str
+    avg_latency_ms: float
+    total_cost_usd: float
+    metrics: dict[str, MetricSummary]
+
+
 class EvalReport(BaseModel):
     """Complete report for an evaluation run."""
 
@@ -83,6 +100,7 @@ class EvalReport(BaseModel):
     timestamp: str
     config: EvalConfig
     results: list[ResultRow]
+    summary: dict[str, ModelSummary] = Field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -169,12 +187,83 @@ async def _run_eval(config: EvalConfig) -> EvalReport:
     console.print(f"[bold]Running {len(tasks)} evaluation(s)…[/bold]")
     results = await asyncio.gather(*tasks)
 
+    result_list = list(results)
     return EvalReport(
         name=config.name,
         timestamp=datetime.now(timezone.utc).isoformat(),
         config=config,
-        results=list(results),
+        results=result_list,
+        summary=compute_summary(result_list, config.evaluators),
     )
+
+
+# ---------------------------------------------------------------------------
+# Aggregation
+# ---------------------------------------------------------------------------
+
+
+def compute_summary(
+    results: list[ResultRow],
+    eval_names: list[str],
+) -> dict[str, ModelSummary]:
+    """Compute per-model aggregate statistics from a flat list of ResultRows.
+
+    Args:
+        results: All (prompt × runner) result rows from an evaluation run.
+        eval_names: Ordered list of evaluator metric names to aggregate.
+
+    Returns:
+        Mapping from model ID to its ModelSummary.
+    """
+    if not results:
+        return {}
+
+    by_model: dict[str, list[ResultRow]] = {}
+    for row in results:
+        by_model.setdefault(row.model, []).append(row)
+
+    by_prompt: dict[str, list[ResultRow]] = {}
+    for row in results:
+        by_prompt.setdefault(row.prompt_id, []).append(row)
+
+    n_prompts = len(by_prompt)
+
+    wins: dict[str, dict[str, int]] = {m: {e: 0 for e in eval_names} for m in by_model}
+    for prompt_rows in by_prompt.values():
+        for metric in eval_names:
+            scored = {
+                row.model: row.scores[metric].score
+                for row in prompt_rows
+                if metric in row.scores
+            }
+            if not scored:
+                continue
+            max_score = max(scored.values())
+            top = [m for m, s in scored.items() if s == max_score]
+            if len(top) == 1:
+                wins[top[0]][metric] += 1
+
+    summary: dict[str, ModelSummary] = {}
+    for model, rows in by_model.items():
+        avg_latency = sum(r.latency_ms for r in rows) / len(rows)
+        total_cost = sum(r.cost_usd for r in rows)
+        metrics: dict[str, MetricSummary] = {}
+        for metric in eval_names:
+            metric_scores = [r.scores[metric].score for r in rows if metric in r.scores]
+            mean = sum(metric_scores) / len(metric_scores) if metric_scores else 0.0
+            win_rate = wins[model][metric] / n_prompts if n_prompts > 0 else 0.0
+            metrics[metric] = MetricSummary(
+                mean_score=round(mean, 4),
+                win_rate=round(win_rate, 4),
+            )
+        summary[model] = ModelSummary(
+            model=model,
+            runner_type=rows[0].runner_type,
+            avg_latency_ms=round(avg_latency, 1),
+            total_cost_usd=round(total_cost, 8),
+            metrics=metrics,
+        )
+    return summary
 
 
 # ---------------------------------------------------------------------------
@@ -188,46 +277,65 @@ def _write_json(report: EvalReport, path: Path) -> None:
 
 
 def _write_markdown(report: EvalReport, path: Path) -> None:
-    """Write a markdown table summarizing scores across all prompt × runner pairs."""
+    """Write a markdown report with a summary table followed by per-row results."""
     eval_names = report.config.evaluators
-    headers = ["Prompt", "Runner", "Model", "Latency (ms)", "Tokens", "Cost ($)"] + [e.title() for e in eval_names]
-    header_row = "| " + " | ".join(headers) + " |"
-    sep_row = "| " + " | ".join("---" for _ in headers) + " |"
+    blank = "—"
+    lines = [f"# {report.name}", f"_Generated: {report.timestamp}_", ""]
 
-    lines = [f"# {report.name}", f"_Generated: {report.timestamp}_", "", header_row, sep_row]
+    # Summary table (at the top)
+    if report.summary:
+        lines += ["## Summary", ""]
+        sum_headers = (
+            ["Model", "Runner", "Avg Latency (ms)", "Total Cost ($)"]
+            + [f"{e.title()} (mean / win%)" for e in eval_names]
+        )
+        lines.append("| " + " | ".join(sum_headers) + " |")
+        lines.append("| " + " | ".join("---" for _ in sum_headers) + " |")
+        for ms in report.summary.values():
+            metric_cells = []
+            for metric in eval_names:
+                m = ms.metrics.get(metric)
+                metric_cells.append(f"{m.mean_score:.2f} / {m.win_rate * 100:.0f}%" if m else blank)
+            lines.append(
+                "| "
+                + " | ".join(
+                    [ms.model, ms.runner_type, f"{ms.avg_latency_ms:.0f}", f"${ms.total_cost_usd:.6f}"]
+                    + metric_cells
+                )
+                + " |"
+            )
+        lines.append("")
+
+    # Per-row results table
+    lines += ["## Results", ""]
+    headers = ["Prompt", "Runner", "Model", "Latency (ms)", "Tokens", "Cost ($)"] + [e.title() for e in eval_names]
+    lines.append("| " + " | ".join(headers) + " |")
+    lines.append("| " + " | ".join("---" for _ in headers) + " |")
     for row in report.results:
-        score_cells = [
-            f"{row.scores[e].score:.2f}" if e in row.scores else "—" for e in eval_names
-        ]
+        score_cells = [f"{row.scores[e].score:.2f}" if e in row.scores else blank for e in eval_names]
         prompt_short = row.prompt[:50].replace("|", "\\|")
         if len(row.prompt) > 50:
             prompt_short += "…"
-        cost_cell = f"${row.cost_usd:.6f}" if row.cost_usd else "—"
+        cost_cell = f"${row.cost_usd:.6f}" if row.cost_usd else blank
         cells = [
-            prompt_short,
-            row.runner_type,
-            row.model,
-            f"{row.latency_ms:.0f}",
-            str(row.input_tokens + row.output_tokens),
-            cost_cell,
+            prompt_short, row.runner_type, row.model,
+            f"{row.latency_ms:.0f}", str(row.input_tokens + row.output_tokens), cost_cell,
         ] + score_cells
         lines.append("| " + " | ".join(cells) + " |")
 
-    # Summary rows grouped by model
+    # Cost totals grouped by model
     by_model: dict[tuple[str, str], list[ResultRow]] = {}
     for row in report.results:
-        key = (row.runner_type, row.model)
-        by_model.setdefault(key, []).append(row)
+        by_model.setdefault((row.runner_type, row.model), []).append(row)
 
     n_cols = len(headers)
-    blank = "—"
     lines.append("| " + " | ".join("---" for _ in headers) + " |")
     for (runner_type, model), rows in by_model.items():
         total = sum(r.cost_usd for r in rows)
         avg = total / len(rows)
-        empty = [blank] * (n_cols - 4)
-        lines.append("| " + " | ".join([f"**Total**", runner_type, model, blank, blank, f"**${total:.6f}**"] + empty) + " |")
-        lines.append("| " + " | ".join([f"**Avg/prompt**", runner_type, model, blank, blank, f"**${avg:.6f}**"] + empty) + " |")
+        empty = [blank] * (n_cols - 6)
+        lines.append("| " + " | ".join(["**Total**", runner_type, model, blank, blank, f"**${total:.6f}**"] + empty) + " |")
+        lines.append("| " + " | ".join(["**Avg/prompt**", runner_type, model, blank, blank, f"**${avg:.6f}**"] + empty) + " |")
 
     path.write_text("\n".join(lines) + "\n")
 
