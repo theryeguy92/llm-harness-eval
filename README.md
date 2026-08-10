@@ -25,8 +25,10 @@ cp .env.example .env
 python run_eval.py --config examples/basic.yaml
 # → prints a score table and writes reports/<name>_<timestamp>.{json,md}
 
-# Run with a dataset file (JSONL or CSV)
+# Repeat each prompt for confidence intervals
 python run_eval.py --config examples/basic.yaml --repeat 3
+
+# To load prompts from a dataset file instead, see below —
 # examples/sample_dataset.jsonl shows the expected format:
 #   {"id": "q1", "input": "...", "context": "...", "expected_output": "..."}
 ```
@@ -147,6 +149,8 @@ result = await ev.compare(
 ```yaml
 name: my_eval
 output_dir: reports/
+seed: 42          # bootstrap CI seed — keeps confidence intervals reproducible
+concurrency: 10   # max simultaneous prompt×runner tasks
 
 prompts:
   - id: q1

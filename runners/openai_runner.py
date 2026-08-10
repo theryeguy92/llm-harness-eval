@@ -7,6 +7,7 @@ import httpx
 
 from .base import BaseRunner, RunResult
 from .pricing import get_cost_usd
+from env import require_key
 
 _DEFAULT_BASE_URL = "https://api.openai.com/v1"
 
@@ -34,7 +35,7 @@ class OpenAIRunner(BaseRunner):
         self._model = model
         self._max_tokens = max_tokens
         self._system = system
-        self._api_key = os.environ["OPENAI_API_KEY"]
+        self._api_key = require_key("OPENAI_API_KEY")
         base = os.environ.get("OPENAI_BASE_URL", _DEFAULT_BASE_URL).rstrip("/")
         self._url = f"{base}/chat/completions"
 

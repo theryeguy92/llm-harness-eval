@@ -1,12 +1,13 @@
 """Pairwise evaluators: compare two responses head-to-head for a given quality dimension."""
 import json
-import os
 import re
 from abc import ABC, abstractmethod
 from typing import Literal
 
-import httpx
 from pydantic import BaseModel, Field, ValidationError
+
+from .base import call_judge
+from env import require_key
 
 
 class PairwiseResult(BaseModel):
@@ -135,7 +136,7 @@ class ExplainabilityPairwise(BasePairwiseEvaluator):
             judge_model: Anthropic model ID to use as the judge.
         """
         self._model = judge_model
-        self._api_key = os.environ["ANTHROPIC_API_KEY"]
+        self._api_key = require_key("ANTHROPIC_API_KEY")
 
     async def compare(
         self,
@@ -164,21 +165,5 @@ class ExplainabilityPairwise(BasePairwiseEvaluator):
             f"Response A:\n{response_a}\n\n"
             f"Response B:\n{response_b}"
         )
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            r = await client.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key": self._api_key,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json",
-                },
-                json={
-                    "model": self._model,
-                    "max_tokens": 256,
-                    "system": _EXPLAINABILITY_SYSTEM,
-                    "messages": [{"role": "user", "content": user_content}],
-                },
-            )
-            r.raise_for_status()
-
-        return _parse_pairwise_response(r.json()["content"][0]["text"])
+        text = await call_judge(self._api_key, self._model, _EXPLAINABILITY_SYSTEM, user_content)
+        return _parse_pairwise_response(text)

@@ -1,12 +1,12 @@
 """Runner for Anthropic Claude models via the Messages API."""
 import asyncio
-import os
 import time
 
 import httpx
 
 from .base import BaseRunner, RunResult
 from .pricing import get_cost_usd
+from env import require_key
 
 
 class ClaudeRunner(BaseRunner):
@@ -31,7 +31,7 @@ class ClaudeRunner(BaseRunner):
         self._model = model
         self._max_tokens = max_tokens
         self._system = system
-        self._api_key = os.environ["ANTHROPIC_API_KEY"]
+        self._api_key = require_key("ANTHROPIC_API_KEY")
 
     async def run(self, prompt: str) -> RunResult:
         """Send a prompt to Claude and return the structured result.

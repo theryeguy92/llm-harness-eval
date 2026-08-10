@@ -76,6 +76,8 @@ class EvalConfig(BaseModel):
     runners: list[RunnerConfig] = Field(..., description="Models to run prompts through")
     evaluators: list[str] = Field(..., description="Evaluator names to apply to each response")
     output_dir: str = Field("reports/", description="Directory for JSON and markdown output")
+    seed: int = Field(42, description="Seed for bootstrap confidence intervals, so CIs are reproducible across runs")
+    concurrency: int = Field(10, description="Max simultaneous prompt×runner tasks")
 
     @model_validator(mode="after")
     def _require_prompts_or_dataset(self) -> "EvalConfig":
@@ -222,6 +224,14 @@ class EvalReport(BaseModel):
     repeat: int = Field(1, description="Number of times each prompt was run")
     aggregated_results: list[AggregatedRow] = Field(default_factory=list)
     statistical_note: str | None = None
+    failures: list[str] = Field(
+        default_factory=list,
+        description="Human-readable descriptions of (prompt × runner) tasks that raised instead of producing a row.",
+    )
+    judge_parse_failures: int = Field(
+        0,
+        description="Number of judge scores that fell back to 0.5 because the judge response was unparseable.",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -268,8 +278,12 @@ async def _evaluate_one(
     runner_cfg: RunnerConfig,
     runner: BaseRunner,
     evaluators: dict[str, BaseEvaluator],
+    semaphore: asyncio.Semaphore | None = None,
 ) -> ResultRow:
     """Run a single (prompt × runner) pair and score with all evaluators concurrently."""
+    if semaphore is not None:
+        async with semaphore:
+            return await _evaluate_one(prompt_cfg, runner_cfg, runner, evaluators)
     if prompt_cfg.context:
         full_prompt = f"Document:\n{prompt_cfg.context}\n\nQuestion: {prompt_cfg.text}"
     else:
@@ -305,17 +319,37 @@ async def _run_eval(config: EvalConfig, repeat: int = 1) -> EvalReport:
     evaluators = _build_evaluators(config.evaluators)
     runners = [(cfg, _build_runner(cfg)) for cfg in config.runners]
 
+    semaphore = asyncio.Semaphore(config.concurrency)
     tasks = [
-        _evaluate_one(prompt_cfg, runner_cfg, runner, evaluators)
+        _evaluate_one(prompt_cfg, runner_cfg, runner, evaluators, semaphore)
         for prompt_cfg in config.prompts
         for runner_cfg, runner in runners
         for _ in range(repeat)
     ]
     n_combos = len(config.prompts) * len(runners)
     console.print(f"[bold]Running {len(tasks)} evaluation(s) ({repeat} × {n_combos} prompt/runner combinations)…[/bold]")
-    results = await asyncio.gather(*tasks)
+    outcomes = await asyncio.gather(*tasks, return_exceptions=True)
 
-    result_list = list(results)
+    result_list: list[ResultRow] = []
+    failures: list[str] = []
+    for outcome in outcomes:
+        if isinstance(outcome, BaseException):
+            failures.append(f"{type(outcome).__name__}: {outcome}")
+        else:
+            result_list.append(outcome)
+    if failures:
+        console.print(f"[red]{len(failures)} task(s) failed:[/red]")
+        for f in failures:
+            console.print(f"  [red]• {f}[/red]")
+
+    judge_parse_failures = sum(
+        1 for row in result_list for ev in row.scores.values() if ev.parse_failed
+    )
+    if judge_parse_failures:
+        console.print(
+            f"[yellow]Warning: {judge_parse_failures} judge score(s) fell back to 0.5 "
+            "(unparseable judge response).[/yellow]"
+        )
     evaluator_versions = {
         name: EvaluatorInfo(name=ev.NAME, prompt_version=ev.PROMPT_VERSION)
         for name, ev in evaluators.items()
@@ -333,8 +367,12 @@ async def _run_eval(config: EvalConfig, repeat: int = 1) -> EvalReport:
         summary=compute_summary(result_list, config.evaluators),
         evaluator_versions=evaluator_versions,
         repeat=repeat,
-        aggregated_results=aggregate_repeated_runs(result_list, config.evaluators),
+        aggregated_results=aggregate_repeated_runs(
+            result_list, config.evaluators, rng=np.random.default_rng(config.seed)
+        ),
         statistical_note=note,
+        failures=failures,
+        judge_parse_failures=judge_parse_failures,
     )
 
 
@@ -372,11 +410,13 @@ def compute_summary(
     wins: dict[str, dict[str, int]] = {m: {e: 0 for e in eval_names} for m in by_model}
     for prompt_rows in by_prompt.values():
         for metric in eval_names:
-            scored = {
-                row.model: row.scores[metric].score
-                for row in prompt_rows
-                if metric in row.scores
-            }
+            # Average repeated runs per model first, so win-rate compares means
+            # rather than whichever repeat happened to be last.
+            per_model: dict[str, list[float]] = {}
+            for row in prompt_rows:
+                if metric in row.scores:
+                    per_model.setdefault(row.model, []).append(row.scores[metric].score)
+            scored = {m: sum(s) / len(s) for m, s in per_model.items()}
             if not scored:
                 continue
             max_score = max(scored.values())
@@ -515,6 +555,16 @@ def _write_markdown(report: EvalReport, path: Path) -> None:
 
     if report.statistical_note:
         lines += [f"> **Note:** {report.statistical_note}", ""]
+
+    if report.judge_parse_failures:
+        lines += [
+            f"> **Warning:** {report.judge_parse_failures} judge score(s) fell back to 0.5 "
+            "(unparseable judge response).",
+            "",
+        ]
+
+    if report.failures:
+        lines += ["## Failures", ""] + [f"- `{f}`" for f in report.failures] + [""]
 
     # Model-level summary table
     if report.summary:

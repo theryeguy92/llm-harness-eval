@@ -1,9 +1,13 @@
 """Base classes and data models for LLM response evaluators."""
+import asyncio
 import json
 import re
 from abc import ABC, abstractmethod
 
+import httpx
 from pydantic import BaseModel, Field
+
+_ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages"
 
 
 class EvalResult(BaseModel):
@@ -11,6 +15,67 @@ class EvalResult(BaseModel):
 
     score: float = Field(..., ge=0.0, le=1.0, description="Quality score between 0.0 and 1.0")
     explanation: str = Field(..., description="Natural-language explanation of the score")
+    parse_failed: bool = Field(
+        False,
+        description="True when the judge response could not be parsed and the score is a 0.5 fallback.",
+    )
+
+
+async def call_judge(
+    api_key: str,
+    model: str,
+    system: str,
+    user_content: str,
+    max_tokens: int = 256,
+    retries: int = 5,
+) -> str:
+    """Call the Anthropic Messages API as an LLM judge and return the raw text reply.
+
+    Retries with exponential backoff on 429/529 and on network/timeout errors,
+    matching the retry behavior of the runners.
+
+    Args:
+        api_key: Anthropic API key.
+        model: Judge model ID.
+        system: Judge system prompt (rubric).
+        user_content: User message with the material to judge.
+        max_tokens: Max tokens for the judge reply.
+        retries: Number of attempts before giving up.
+
+    Returns:
+        The judge's raw text content.
+
+    Raises:
+        httpx.HTTPStatusError: On a non-retryable error, or after all retries fail.
+    """
+    body = {
+        "model": model,
+        "max_tokens": max_tokens,
+        "system": system,
+        "messages": [{"role": "user", "content": user_content}],
+    }
+    headers = {
+        "x-api-key": api_key,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+    }
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        for attempt in range(retries):
+            try:
+                r = await client.post(_ANTHROPIC_MESSAGES_URL, headers=headers, json=body)
+            except (httpx.TimeoutException, httpx.TransportError):
+                if attempt == retries - 1:
+                    raise
+                await asyncio.sleep(2 ** attempt)
+                continue
+            if r.status_code in (429, 529):
+                await asyncio.sleep(2 ** attempt)
+                continue
+            r.raise_for_status()
+            break
+        else:
+            r.raise_for_status()
+    return r.json()["content"][0]["text"]
 
 
 def parse_judge_response(text: str) -> "EvalResult":
@@ -36,7 +101,11 @@ def parse_judge_response(text: str) -> "EvalResult":
         except (json.JSONDecodeError, KeyError, ValueError):
             pass
 
-    return EvalResult(score=0.5, explanation="Judge response could not be parsed.")
+    return EvalResult(
+        score=0.5,
+        explanation="Judge response could not be parsed.",
+        parse_failed=True,
+    )
 
 
 class BaseEvaluator(ABC):

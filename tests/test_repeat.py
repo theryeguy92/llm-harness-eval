@@ -205,3 +205,14 @@ def test_score_stats_round_trip():
     s = ScoreStats(mean=0.75, std=0.05, ci_lower=0.65, ci_upper=0.85, n=10)
     assert s.mean == 0.75
     assert s.n == 10
+
+
+def test_aggregate_same_seed_reproducible_ci():
+    rows = [
+        _row("m1", "claude", "p1", 100.0, 0.001, coherence=s)
+        for s in (0.6, 0.7, 0.8, 0.9)
+    ]
+    a = aggregate_repeated_runs(rows, ["coherence"], rng=np.random.default_rng(42))
+    b = aggregate_repeated_runs(rows, ["coherence"], rng=np.random.default_rng(42))
+    assert a[0].scores["coherence"].ci_lower == b[0].scores["coherence"].ci_lower
+    assert a[0].scores["coherence"].ci_upper == b[0].scores["coherence"].ci_upper

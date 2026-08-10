@@ -1,9 +1,7 @@
 """Faithfulness evaluator: does the response stay grounded in the provided context?"""
-import os
 
-import httpx
-
-from .base import BaseEvaluator, EvalResult, parse_judge_response
+from .base import BaseEvaluator, EvalResult, call_judge, parse_judge_response
+from env import require_key
 
 
 _SYSTEM = """\
@@ -38,7 +36,7 @@ class FaithfulnessEvaluator(BaseEvaluator):
             judge_model: Anthropic model ID to use as the judge.
         """
         self._model = judge_model
-        self._api_key = os.environ["ANTHROPIC_API_KEY"]
+        self._api_key = require_key("ANTHROPIC_API_KEY")
 
     async def score(
         self,
@@ -71,21 +69,5 @@ class FaithfulnessEvaluator(BaseEvaluator):
             )
 
         user_content = f"Context:\n{context}\n\nPrompt:\n{prompt}\n\nResponse:\n{response}"
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            r = await client.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key": self._api_key,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json",
-                },
-                json={
-                    "model": self._model,
-                    "max_tokens": 256,
-                    "system": _SYSTEM,
-                    "messages": [{"role": "user", "content": user_content}],
-                },
-            )
-            r.raise_for_status()
-
-        return parse_judge_response(r.json()["content"][0]["text"])
+        text = await call_judge(self._api_key, self._model, _SYSTEM, user_content)
+        return parse_judge_response(text)

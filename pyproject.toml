@@ -32,7 +32,7 @@ dev = [
 run-eval = "run_eval:app"
 
 [tool.hatch.build.targets.wheel]
-packages = ["evaluators", "runners"]
+include = ["evaluators", "runners", "env.py", "run_eval.py"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

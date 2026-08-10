@@ -1,12 +1,12 @@
 """Runner for Google Gemini models via the Gemini REST API."""
 import asyncio
-import os
 import time
 
 import httpx
 
 from .base import BaseRunner, RunResult
 from .pricing import get_cost_usd
+from env import require_key
 
 _BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 
@@ -33,7 +33,7 @@ class GeminiRunner(BaseRunner):
         self._model = model
         self._max_tokens = max_tokens
         self._system = system
-        self._api_key = os.environ["GOOGLE_API_KEY"]
+        self._api_key = require_key("GOOGLE_API_KEY")
 
     async def run(self, prompt: str) -> RunResult:
         """Send a prompt to Gemini and return the structured result.
